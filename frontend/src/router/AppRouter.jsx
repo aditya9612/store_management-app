@@ -1,22 +1,19 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 
 // ✅ Public Pages
 import Home from "@pages/Home";
 import About from "@pages/About";
 import Product from "@pages/Product";
 import Offers from "@pages/Offers";       // Customer-facing offers
-import LoginPage from "@pages/LoginPage";
 import Contact from "@pages/Contact";
+
+// ✅ Shop Owner Pages
+import LoginPage from "@pages/LoginPage";
+import DashBoard from "@dashboard/DashBoard";
 
 // ✅ Components
 import Header from "@components/Header";
 import Footer from "@components/Footer";
-
-// ✅ Dashboard Pages
-   import DashBoard from "@dashboard/DashBoard";
-// import InvoicesSection from "@dashboard/InvoicesSection";
-// import Notifications from "@dashboard/Notifications";
-// import OffersAdmin from "@dashboard/OffersAdmin"; // Admin dashboard offers page
 
 // ✅ Layout wrapper to hide Header/Footer on Dashboard
 function Layout({ children }) {
@@ -34,25 +31,34 @@ function Layout({ children }) {
   );
 }
 
+// ✅ Protected Route for Shop Owner
+function PrivateRoute({ children }) {
+  const isOwnerLoggedIn = localStorage.getItem("isOwnerLoggedIn");
+  return isOwnerLoggedIn ? children : <Navigate to="/owner-login" replace />;
+}
+
 export default function AppRouter() {
   return (
     <Router>
       <Layout>
         <Routes>
-          {/* ✅ Public Routes */}
+          {/* ✅ Public Routes (Customer-facing) */}
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/product" element={<Product />} />
-          <Route path="/offers" element={<Offers />} />   {/* Customer view */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/offers" element={<Offers />} />
           <Route path="/contact" element={<Contact />} />
 
-          {/* ✅ Dashboard Routes */}
-          <Route path="/dashboard" element={<DashBoard />}>
-            {/* <Route path="invoices" element={<InvoicesSection />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="offersadmin" element={<OffersAdmin />} /> Admin offers */}
-          </Route>
+          {/* ✅ Shop Owner Routes (Hidden from customers) */}
+          <Route path="/owner-login" element={<LoginPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <DashBoard />
+              </PrivateRoute>
+            }
+          />
 
           {/* Fallback */}
           <Route path="*" element={<h2>404 - Page Not Found</h2>} />

@@ -111,7 +111,7 @@ h2 {
 
 .navbar-toggler .bar {
   height: 3px;
-  width: 15px;
+  width: 26px;
   background: #333;
   border-radius: 2px;
   transition: all 0.3s ease;
@@ -119,7 +119,7 @@ h2 {
 
 /* Animate to "X" when open */
 .navbar-toggler.open .bar:nth-child(1) {
-  transform: rotate(45deg) translate(4px, 4px);
+  transform: rotate(45deg) translate(6px, 6px);
 }
 
 .navbar-toggler.open .bar:nth-child(2) {
@@ -127,7 +127,7 @@ h2 {
 }
 
 .navbar-toggler.open .bar:nth-child(3) {
-  transform: rotate(-45deg) translate(3px, -3px);
+  transform: rotate(-45deg) translate(6px, -6px);
 }
 
 
@@ -137,12 +137,12 @@ h2 {
     display: none;
     position: absolute;
     top: 60px; /* adjust based on header height */
-    right: 15px;
+    right: 13px;
     background: #fff;
     flex-direction: column;
-    align-items: flex-start;
-    width: 220px;
-    padding: 10px 0;
+    align-items:center;
+    width: 177px;
+    padding: 2px 3px 0 ;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     max-height: 0;             /* collapsed by default */
@@ -154,10 +154,11 @@ h2 {
   .navbar-menu.show {
     max-height: 400px;
     opacity: 1;
+    display: flex;
+    margin-top: 80px;
   }
 
   .navbar-menu .nav-item {
-    margin: 0;
     width: 100%;
   }
 

@@ -41,16 +41,16 @@
 }
 
 .navbar-toggler .bar {
-  width: 50px;
+  width: 28px;
   height: 4px;
   background-color: #000;
-  border-radius: 2px;
+  border-radius: 1px;
   transition: all 0.3s ease-in-out;
 }
 
-/* ======= Toggle Animation ======= */
+/* Animate to "X" when open */
 .navbar-toggler.open .bar:nth-child(1) {
-  transform: rotate(45deg) translateY(8px);
+  transform: rotate(45deg) translate(8px, 8px);
 }
 
 .navbar-toggler.open .bar:nth-child(2) {
@@ -58,7 +58,7 @@
 }
 
 .navbar-toggler.open .bar:nth-child(3) {
-  transform: rotate(-45deg) translateY(-8px);
+  transform: rotate(-45deg) translate(8px, -8px);
 }
 
 /* ======= Navigation Menu ======= */
@@ -71,6 +71,7 @@
 
 .navbar-menu.show {
   display: flex;
+  
 }
 
 /* ======= Nav Items ======= */

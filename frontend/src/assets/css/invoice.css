@@ -1,36 +1,37 @@
-/* Invoice generator styling (separate file: invoice.css) */
-
+/* ==========================
+   Invoice Generator Styling
+========================== */
 .invoices-section {
   max-width: 1000px;
-  margin: 20px auto;
-  padding: 10px;
-  margin-top: 0;
+  margin: 0 auto;
+  padding: 15px;
 }
 
+/* Grid Layout */
 .invoice-grid {
   display: grid;
   grid-template-columns: 1fr 420px;
-  gap: 18px;
+  gap: 20px;
 }
 
-/* Card */
+/* Invoice Card */
 .invoice-card {
   background: #fff;
-  padding: 10px;
-  border-radius: 9px;
+  padding: 15px;
+  border-radius: 10px;
   box-shadow: 0 6px 18px rgba(19, 23, 34, 0.06);
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
 }
 
 .invoice-card h3 {
-  margin: 0 0 12px;
+  margin: 0 0 15px;
+  font-size: 18px;
 }
 
-/* Form controls */
+/* Form Labels & Inputs */
 .invoice-card label {
   display: block;
-  margin: 8px 0 6px;
+  margin: 10px 0 5px;
   font-weight: 600;
   font-size: 14px;
 }
@@ -43,63 +44,171 @@
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid #e6e9ef;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   outline: none;
+  font-size: 14px;
 }
 
 .invoice-card textarea {
   min-height: 80px;
 }
 
+/* Item Form Row */
 .item-form {
   display: grid;
   grid-template-columns: 1fr 100px 120px 110px;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.item-form input { padding: 8px 10px; }
-.small-btn {
+.item-form input {
   padding: 8px 10px;
+  font-size: 14px;
+}
+
+/* Small Buttons */
+.small-btn {
+  padding: 8px 12px;
   background: #6b7280;
   color: #fff;
   border-radius: 8px;
   border: none;
   cursor: pointer;
+  font-size: 13px;
 }
-.small-btn:hover { opacity: 0.95; }
+.small-btn:hover {
+  opacity: 0.95;
+}
 
-/* Items mini table */
+/* Items Mini Table */
 .mini-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 12px;
+  margin-bottom: 15px;
+  font-size: 14px;
 }
-.mini-table th, .mini-table td {
+
+.mini-table th,
+.mini-table td {
   border: 1px solid #f1f3f5;
   padding: 8px;
+}
+
+.items-list .muted {
+  color: #6b7280;
   font-size: 13px;
 }
-.items-list .muted { color: #6b7280; }
 
-/* Buttons */
-.blue { background: #1d4ed8; color: #fff; padding: 10px 14px; border-radius: 8px; border: none; cursor: pointer; }
-.fullwidth { width: 100%; margin-top: 8px; }
-.blue:hover { opacity: 0.95; }
+/* Action Buttons */
+.blue {
+  background: #1d4ed8;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.fullwidth {
+  width: 100%;
+  margin-top: 10px;
+}
+.blue:hover {
+  opacity: 0.95;
+}
 
-/* Invoice list */
-.invoice-list { list-style: none; padding: 0; margin: 0; display:flex; flex-direction: column; gap: 8px; }
-.invoice-row { display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:8px; background:#fafafa; border:1px solid #f1f5f9; }
-.invoice-row .muted { color:#6b7280; font-size:13px; }
+/* Invoice List */
+.invoice-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-/* Invoice action buttons */
-.invoice-actions button { margin-left: 8px; padding:6px 8px; border-radius:6px; border:none; background:#10b981; color:#fff; cursor:pointer; }
-.invoice-actions button:first-child { background:#2563eb; }
-.invoice-actions button:hover { opacity:0.95; }
+.invoice-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 8px;
+  background: #fafafa;
+  border: 1px solid #f1f5f9;
+  font-size: 14px;
+}
 
-/* Responsive */
-@media (max-width: 980px) {
-  .invoice-grid { grid-template-columns: 1fr; }
-  .item-form { grid-template-columns: 1fr 80px 100px 100px; }
+.invoice-row .muted {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* Invoice Action Buttons */
+.invoice-actions button {
+  margin-left: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 13px;
+}
+
+.invoice-actions button:first-child {
+  background: #2563eb;
+}
+
+.invoice-actions button:last-child {
+  background: #10b981;
+}
+
+.invoice-actions button:hover {
+  opacity: 0.95;
+}
+
+/* ==========================
+   Responsive Adjustments
+========================== */
+@media (max-width: 1024px) {
+  .invoice-grid {
+    grid-template-columns: 1fr;
+  }
+  .item-form {
+    grid-template-columns: 1fr 80px 100px 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .item-form {
+    grid-template-columns: 1fr 70px 90px 90px;
+  }
+  .invoice-card input,
+  .invoice-card textarea {
+    font-size: 13px;
+  }
+  .invoice-actions button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .item-form {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .invoice-actions {
+    display: flex;
+    flex-direction: column;
+  }
+  .invoice-actions button {
+    margin: 4px 0;
+  }
+  .invoice-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .invoice-row .muted {
+    margin-top: 4px;
+  }
 }

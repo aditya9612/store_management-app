@@ -1,14 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import logo from "@assets/images/logo.png";
-import "@assets/css/Header.css"; // Import CSS with alias
+import "@assets/css/Header.css"
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+  const togglerRef = useRef(null);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        togglerRef.current &&
+        !togglerRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className="header_section">
@@ -21,6 +42,7 @@ export default function Header() {
 
           {/* Hamburger Toggle */}
           <button
+            ref={togglerRef}
             className={`navbar-toggler ${isOpen ? "open" : ""}`}
             onClick={toggleMenu}
             aria-label="Toggle navigation"
@@ -32,7 +54,10 @@ export default function Header() {
           </button>
 
           {/* Collapsible Nav */}
-          <div className={`navbar-menu ${isOpen ? "show" : ""}`}>
+          <div
+            ref={menuRef}
+            className={`navbar-menu ${isOpen ? "show" : ""}`}
+          >
             <ul className="navbar-nav">
               <li className="nav-item">
                 <Link className="nav-link" to="/" onClick={() => setIsOpen(false)}>Home</Link>
@@ -46,9 +71,9 @@ export default function Header() {
               <li className="nav-item">
                 <Link className="nav-link" to="/blog" onClick={() => setIsOpen(false)}>Offers</Link>
               </li>
-              <li className="nav-item">
+              {/* <li className="nav-item">
                 <Link className="nav-link" to="/login" onClick={() => setIsOpen(false)}>Login</Link>
-              </li>
+              </li> */}
               <li className="nav-item">
                 <Link className="nav-link" to="/contact" onClick={() => setIsOpen(false)}>Contact</Link>
               </li>
