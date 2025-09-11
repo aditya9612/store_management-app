@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import "@assets/css/AuthPage.css";
 
 function AuthPage() {
-  const [isRegister, setIsRegister] = useState(true); // toggle between Register & Login
+  const [isRegister, setIsRegister] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     shopName: "",
@@ -14,7 +14,7 @@ function AuthPage() {
     password: "",
   });
 
-  const [loginInput, setLoginInput] = useState(""); // email or number
+  const [loginInput, setLoginInput] = useState(""); // email or phone
   const [otp, setOtp] = useState("");
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -40,21 +40,17 @@ function AuthPage() {
   // ✅ Register shop owner
   const handleRegister = (e) => {
     e.preventDefault();
-    // Get existing owners
     const existingOwners = JSON.parse(localStorage.getItem("shopOwners")) || [];
 
-    // Check if email or number already exists
     const exists = existingOwners.some(
       (owner) =>
         owner.email === formData.email || owner.number === formData.number
     );
-
     if (exists) {
       alert("Email or phone number already registered!");
       return;
     }
 
-    // Add new owner
     const updatedOwners = [...existingOwners, formData];
     localStorage.setItem("shopOwners", JSON.stringify(updatedOwners));
 
@@ -90,7 +86,9 @@ function AuthPage() {
     const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(otpCode);
     setOtpSent(true);
-    alert(`Mock OTP (for testing): ${otpCode}`);
+
+    // ✅ Mock OTP display (for demo/testing)
+    alert(`Mock OTP: ${otpCode}`);
   };
 
   // ✅ Verify OTP
@@ -107,7 +105,6 @@ function AuthPage() {
     }
 
     if (otp === generatedOtp) {
-      // Save login info
       localStorage.setItem("isOwnerLoggedIn", "true");
       localStorage.setItem("loggedInOwner", JSON.stringify(owner));
       setLoggedInOwner(owner);
@@ -118,12 +115,14 @@ function AuthPage() {
     }
   };
 
-  // Optional: logout function
+  // ✅ Logout
   const handleLogout = () => {
     localStorage.removeItem("isOwnerLoggedIn");
     localStorage.removeItem("loggedInOwner");
     setLoggedInOwner(null);
-    alert("Logged out successfully");
+    setOtp("");
+    setOtpSent(false);
+    setLoginInput("");
     navigate("/owner-login");
   };
 
