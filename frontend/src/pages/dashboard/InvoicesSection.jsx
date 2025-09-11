@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "@assets/css/invoice.css";
 
 export default function InvoicesSection({ invoices, setInvoices }) {
@@ -11,7 +11,19 @@ export default function InvoicesSection({ invoices, setInvoices }) {
   const [itemRate, setItemRate] = useState("");
   const [itemDiscount, setItemDiscount] = useState("");
 
-  // Add line item
+  // ✅ Load invoices from localStorage when component mounts
+  useEffect(() => {
+    const storedInvoices = JSON.parse(localStorage.getItem("invoices")) || [];
+    setInvoices(storedInvoices);
+  }, [setInvoices]);
+
+  // ✅ Save invoices to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("invoices", JSON.stringify(invoices));
+  }, [invoices]);
+
+  const currency = (n) => `₹${Number(n).toLocaleString()}`;
+
   const handleAddItem = (e) => {
     e.preventDefault();
     if (!itemDesc || !itemQty || !itemRate) return;
@@ -32,15 +44,13 @@ export default function InvoicesSection({ invoices, setInvoices }) {
     setItemDiscount("");
   };
 
-  // Generate invoice
   const handleGenerateInvoice = (e) => {
     e.preventDefault();
     if (!customer || !phone || items.length === 0) {
-      alert("Please enter customer name, phone, and at least one item.");
+      alert("Please enter customer info and at least one item.");
       return;
     }
 
-    // ✅ Calculate totals
     const subtotal = items.reduce(
       (s, it) => s + it.qty * it.rate * (1 - it.discount / 100),
       0
@@ -54,26 +64,85 @@ export default function InvoicesSection({ invoices, setInvoices }) {
       phone,
       address,
       items,
-      total: subtotal, // ✅ store total revenue
+      total: subtotal,
     };
 
-    setInvoices([newInvoice, ...invoices]);
+    const updatedInvoices = [newInvoice, ...invoices];
+    setInvoices(updatedInvoices);
 
-    // Reset form
     setCustomer("");
     setPhone("");
     setAddress("");
     setItems([]);
   };
 
-  const currency = (n) => `₹${Number(n).toLocaleString()}`;
+  const printInvoice = (invoice) => {
+    const subtotal = invoice.items.reduce(
+      (s, it) => s + it.qty * it.rate * (1 - it.discount / 100),
+      0
+    );
+    const html = `
+      <html>
+      <head><title>Invoice #${invoice.number}</title></head>
+      <body>
+        <h2>Invoice #${invoice.number}</h2>
+        <p>Date: ${invoice.date}</p>
+        <p>Customer: ${invoice.customer}</p>
+        <p>Phone: ${invoice.phone}</p>
+        <p>Address: ${invoice.address || ""}</p>
+        <table border="1" cellpadding="5" cellspacing="0">
+          <tr><th>Item</th><th>Qty</th><th>Rate</th><th>Discount</th><th>Amount</th></tr>
+          ${invoice.items
+            .map(
+              (it) =>
+                `<tr>
+                  <td>${it.desc}</td>
+                  <td>${it.qty}</td>
+                  <td>${currency(it.rate)}</td>
+                  <td>${it.discount}%</td>
+                  <td>${currency(it.qty * it.rate * (1 - it.discount / 100))}</td>
+                </tr>`
+            )
+            .join("")}
+        </table>
+        <h3>Total: ${currency(subtotal)}</h3>
+        <script>window.onload=function(){window.print();}</script>
+      </body>
+      </html>
+    `;
+    const w = window.open("", "_blank", "width=900,height=700");
+    if (!w) alert("Pop-up blocked!");
+    w.document.write(html);
+    w.document.close();
+  };
+
+  // ✅ SMS sending integration
+  const sendSMS = async (invoice) => {
+    try {
+      const total = invoice.items
+        .reduce((s, it) => s + it.qty * it.rate * (1 - it.discount / 100), 0)
+        .toFixed(2);
+
+      const message = `Invoice #${invoice.number} for ${invoice.customer}: Total ₹${total}`;
+      
+      const res = await fetch("http://localhost:5000/send-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: invoice.phone, body: message }),
+      });
+
+      const data = await res.json();
+      if (data.success) alert("SMS sent successfully!");
+      else alert(`Failed: ${data.error}`);
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
 
   return (
     <div className="invoices-section">
       <h1>Invoice Generator 🧾</h1>
-
       <div className="invoice-grid">
-        {/* Create Invoice Form */}
         <div className="invoice-card">
           <h3>Create Invoice</h3>
           <form onSubmit={handleGenerateInvoice}>
@@ -151,22 +220,16 @@ export default function InvoicesSection({ invoices, setInvoices }) {
                       <td>{it.qty}</td>
                       <td>{currency(it.rate)}</td>
                       <td>{it.discount}%</td>
-                      <td>
-                        {currency(
-                          it.qty * it.rate * (1 - it.discount / 100)
-                        )}
-                      </td>
+                      <td>{currency(it.qty * it.rate * (1 - it.discount / 100))}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
-
             <button className="blue fullwidth">Generate Invoice</button>
           </form>
         </div>
 
-        {/* Invoice List */}
         <div className="invoice-card">
           <h3>Invoices</h3>
           <ul className="invoice-list">
@@ -178,6 +241,21 @@ export default function InvoicesSection({ invoices, setInvoices }) {
                 </div>
                 <div className="invoice-actions">
                   <span className="highlight">Total: {currency(inv.total)}</span>
+                  <button className="small-btn" onClick={() => printInvoice(inv)}>
+                    Print
+                  </button>
+                  <button className="small-btn" onClick={() => sendSMS(inv)}>
+                    Send SMS
+                  </button>
+                  <button
+                    className="small-btn"
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(inv));
+                      alert("Copied!");
+                    }}
+                  >
+                    Copy JSON
+                  </button>
                 </div>
               </li>
             ))}
