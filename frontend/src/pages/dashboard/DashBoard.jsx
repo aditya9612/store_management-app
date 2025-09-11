@@ -4,28 +4,15 @@ import "@assets/css/dashboard.css";
 import InvoicesSection from "@dashboard/InvoicesSection";
 import Notifications from "@dashboard/Notifications";
 import OffersAdmin from "@dashboard/OffersAdmin";
+import Customers from "@dashboard/Customers"; // ✅ New import
 
 function DashboardApp() {
   const [activePage, setActivePage] = useState("dashboard");
   const [offers, setOffers] = useState([]);
-  const [customers, setCustomers] = useState([
-    {
-      name: "John Doe",
-      email: "john@example.com",
-      phone: "9876543210",
-      address: "New York",
-    },
-    {
-      name: "Jane Smith",
-      email: "jane@example.com",
-      phone: "9876501234",
-      address: "California",
-    },
-  ]);
 
   const navigate = useNavigate();
 
-  // ✅ Protect Dashboard (only for logged-in owner)
+  // ✅ Protect Dashboard
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isOwnerLoggedIn");
     if (!isLoggedIn) {
@@ -33,10 +20,10 @@ function DashboardApp() {
     }
   }, [navigate]);
 
-  // ✅ Logout handler
+  // ✅ Logout
   const handleLogout = () => {
     localStorage.removeItem("isOwnerLoggedIn");
-    localStorage.removeItem("shopOwner"); // optional: clear stored details
+    localStorage.removeItem("shopOwner");
     alert("You have been logged out!");
     navigate("/owner-login");
   };
@@ -80,57 +67,18 @@ function DashboardApp() {
           <div>
             <h1>Welcome to Dashboard 🎉</h1>
             <div className="grid-3">
-              <div className="card">Total Customers: {customers.length}</div>
-              <div className="card">Revenue: ₹45,000</div>
+              <div className="card">Total Sales: ₹45,000</div>
+              <div className="card">Invoices Generated: 20</div>
               <div className="card">Reports Generated: 12</div>
             </div>
           </div>
         )}
 
-        {activePage === "customers" && (
-          <div>
-            <h1>Customer Management 👥</h1>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const name = e.target.name.value;
-                const email = e.target.email.value;
-                const phone = e.target.phone.value;
-                const address = e.target.address.value;
-
-                if (name && email && phone) {
-                  setCustomers([...customers, { name, email, phone, address }]);
-                  e.target.reset();
-                }
-              }}
-            >
-              <input type="text" name="name" placeholder="Customer Name" required />
-              <input type="email" name="email" placeholder="Customer Email" required />
-              <input
-                type="tel"
-                name="phone"
-                placeholder="Customer Phone"
-                pattern="[0-9]{10}"
-                required
-              />
-              <input type="text" name="address" placeholder="Customer Address" />
-              <button className="blue">Add Customer</button>
-            </form>
-
-            <ul>
-              {customers.map((c, idx) => (
-                <li key={idx}>
-                  {c.name} - {c.email} - {c.phone} - {c.address}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
+        {activePage === "customers" && <Customers />}
         {activePage === "products" && (
           <div>
             <h1>Product Management 🛒</h1>
-            <form onSubmit={(e) => e.preventDefault()}>
+            <form onSubmit={(e) => e.preventDefault()} className="form-card">
               <input type="text" name="name" placeholder="Product Name" required />
               <textarea name="description" placeholder="Product Description" required />
               <input type="number" name="price" placeholder="Price (₹)" required />
