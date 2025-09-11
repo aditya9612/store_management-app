@@ -4,11 +4,21 @@ import "@assets/css/dashboard.css";
 import InvoicesSection from "@dashboard/InvoicesSection";
 import Notifications from "@dashboard/Notifications";
 import OffersAdmin from "@dashboard/OffersAdmin";
-import Customers from "@dashboard/Customers"; // ✅ New import
+import Customers from "@dashboard/Customers";
 
 function DashboardApp() {
   const [activePage, setActivePage] = useState("dashboard");
-  const [offers, setOffers] = useState([]);
+
+  // ✅ Centralized State
+  const [customers, setCustomers] = useState(() =>
+    JSON.parse(localStorage.getItem("customers")) || []
+  );
+  const [offers, setOffers] = useState(() =>
+    JSON.parse(localStorage.getItem("offers")) || []
+  );
+  const [invoices, setInvoices] = useState(() =>
+    JSON.parse(localStorage.getItem("invoices")) || []
+  );
 
   const navigate = useNavigate();
 
@@ -20,6 +30,19 @@ function DashboardApp() {
     }
   }, [navigate]);
 
+  // ✅ Persist data in localStorage
+  useEffect(() => {
+    localStorage.setItem("customers", JSON.stringify(customers));
+  }, [customers]);
+
+  useEffect(() => {
+    localStorage.setItem("offers", JSON.stringify(offers));
+  }, [offers]);
+
+  useEffect(() => {
+    localStorage.setItem("invoices", JSON.stringify(invoices));
+  }, [invoices]);
+
   // ✅ Logout
   const handleLogout = () => {
     localStorage.removeItem("isOwnerLoggedIn");
@@ -28,6 +51,14 @@ function DashboardApp() {
     navigate("/owner-login");
   };
 
+  // ✅ Calculations
+  const activeOffersCount = offers.filter((o) => o.active).length;
+  const totalRevenue = invoices.reduce((sum, inv) => sum + inv.total, 0);
+  const productsSold = invoices.reduce(
+    (sum, inv) => sum + (inv.items ? inv.items.length : 0),
+    0
+  );
+
   return (
     <div className="dashboard-wrapper">
       {/* Sidebar */}
@@ -35,25 +66,60 @@ function DashboardApp() {
         <h2>Store Admin</h2>
         <ul>
           <li>
-            <button onClick={() => setActivePage("dashboard")}>🏠 Dashboard</button>
+            <button
+              className={activePage === "dashboard" ? "active" : ""}
+              onClick={() => setActivePage("dashboard")}
+            >
+              🏠 Dashboard
+            </button>
           </li>
           <li>
-            <button onClick={() => setActivePage("customers")}>👥 Customers</button>
+            <button
+              className={activePage === "customers" ? "active" : ""}
+              onClick={() => setActivePage("customers")}
+            >
+              👥 Customers
+            </button>
           </li>
           <li>
-            <button onClick={() => setActivePage("products")}>🛒 Products</button>
+            <button
+              className={activePage === "products" ? "active" : ""}
+              onClick={() => setActivePage("products")}
+            >
+              🛒 Products
+            </button>
           </li>
           <li>
-            <button onClick={() => setActivePage("invoices")}>🧾 Invoices</button>
+            <button
+              className={activePage === "invoices" ? "active" : ""}
+              onClick={() => setActivePage("invoices")}
+            >
+              🧾 Invoices
+            </button>
           </li>
           <li>
-            <button onClick={() => setActivePage("offersadmin")}>🎁 Offers</button>
+            <button
+              className={activePage === "offersadmin" ? "active" : ""}
+              onClick={() => setActivePage("offersadmin")}
+            >
+              🎁 Offers
+            </button>
           </li>
           <li>
-            <button onClick={() => setActivePage("notifications")}>📢 Notifications</button>
+            <button
+              className={activePage === "notifications" ? "active" : ""}
+              onClick={() => setActivePage("notifications")}
+            >
+              📢 Notifications
+            </button>
           </li>
           <li>
-            <button onClick={() => setActivePage("reports")}>📊 Reports</button>
+            <button
+              className={activePage === "reports" ? "active" : ""}
+              onClick={() => setActivePage("reports")}
+            >
+              📊 Reports
+            </button>
           </li>
           <li>
             <button onClick={handleLogout}>🚪 Logout</button>
@@ -66,15 +132,27 @@ function DashboardApp() {
         {activePage === "dashboard" && (
           <div>
             <h1>Welcome to Dashboard 🎉</h1>
-            <div className="grid-3">
-              <div className="card">Total Sales: ₹45,000</div>
-              <div className="card">Invoices Generated: 20</div>
-              <div className="card">Reports Generated: 12</div>
+            <div className="grid-4">
+              <div className="card highlight">
+                👥 Customers <span>{customers.length}</span>
+              </div>
+              <div className="card highlight">
+                🎁 Active Offers <span>{activeOffersCount}</span>
+              </div>
+              <div className="card highlight">
+                🛒 Products Sold <span>{productsSold}</span>
+              </div>
+              <div className="card highlight">
+                💰 Total Revenue <span>₹{totalRevenue}</span>
+              </div>
             </div>
           </div>
         )}
 
-        {activePage === "customers" && <Customers />}
+        {activePage === "customers" && (
+          <Customers customers={customers} setCustomers={setCustomers} />
+        )}
+
         {activePage === "products" && (
           <div>
             <h1>Product Management 🛒</h1>
@@ -88,17 +166,24 @@ function DashboardApp() {
           </div>
         )}
 
-        {activePage === "invoices" && <InvoicesSection />}
-        {activePage === "offersadmin" && <OffersAdmin offers={offers} setOffers={setOffers} />}
+        {activePage === "invoices" && (
+          <InvoicesSection invoices={invoices} setInvoices={setInvoices} />
+        )}
+
+        {activePage === "offersadmin" && (
+          <OffersAdmin offers={offers} setOffers={setOffers} />
+        )}
+
         {activePage === "notifications" && <Notifications />}
 
         {activePage === "reports" && (
           <div>
             <h1>Reports & Analytics 📊</h1>
             <div className="grid-3">
-              <div className="card">Daily Sales: ₹5,000</div>
-              <div className="card">Weekly Sales: ₹20,000</div>
-              <div className="card">Monthly Sales: ₹80,000</div>
+              <div className="card">Total Revenue: ₹{totalRevenue}</div>
+              <div className="card">Products Sold: {productsSold}</div>
+              <div className="card">Total Customers: {customers.length}</div>
+              <div className="card">Active Offers: {activeOffersCount}</div>
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 /* ================================
-   Global Styles
+   Global
 ================================ */
 * {
   margin: 0;
@@ -8,22 +8,19 @@
 }
 
 body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: #f8fafc;
+  font-family: "Segoe UI", sans-serif;
+  background: #f1f5f9;
   color: #1e293b;
 }
 
 /* ================================
-   Dashboard Layout
+   Layout
 ================================ */
 .dashboard-wrapper {
   display: flex;
   min-height: 100vh;
 }
 
-/* ================================
-   Sidebar
-================================ */
 .sidebar {
   width: 240px;
   background: linear-gradient(180deg, #1e293b, #0f172a);
@@ -85,17 +82,23 @@ body {
 ================================ */
 .main-content {
   flex: 1;
-  margin-left: 240px; /* Always leave space for sidebar */
+  margin-left: 240px;
   padding: 20px;
 }
 
 .main-content h1 {
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 20px;
 }
 
+.section-title {
+  font-size: 20px;
+  margin: 25px 0 15px;
+  color: #334155;
+}
+
 /* ================================
-   Dashboard Cards & Grid
+   Cards & Grids
 ================================ */
 .grid-3 {
   display: grid;
@@ -103,13 +106,75 @@ body {
   gap: 16px;
 }
 
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
 .card {
   background: #fff;
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 18px;
   text-align: center;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
   font-weight: 500;
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+.card.highlight {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 16px;
+}
+
+.card.highlight span {
+  display: block;
+  margin-top: 10px;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* ================================
+   Forms
+================================ */
+.form-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+}
+
+.form-card input,
+.form-card textarea {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.form-card button {
+  padding: 12px;
+  background: #16a34a;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.form-card button:hover {
+  background: #15803d;
 }
 
 /* ================================
@@ -117,41 +182,22 @@ body {
 ================================ */
 @media (max-width: 768px) {
   .sidebar {
-    width: 180px; /* Shrink sidebar on small screens */
-    padding: 15px 10px;
+    width: 200px;
   }
-
   .main-content {
-    margin-left: 180px; /* Adjust content accordingly */
-    padding: 15px;
-  }
-
-  .sidebar h2 {
-    font-size: 18px;
-  }
-
-  .sidebar button {
-    font-size: 14px;
-    padding: 10px;
+    margin-left: 200px;
   }
 }
 
 @media (max-width: 480px) {
   .sidebar {
-    width: 150px;
+    width: 160px;
   }
-
   .main-content {
-    margin-left: 150px;
-    padding: 12px;
+    margin-left: 160px;
+    padding: 15px;
   }
-
-  .sidebar h2 {
-    font-size: 16px;
-  }
-
-  .sidebar button {
-    font-size: 13px;
-    padding: 8px;
+  .grid-4 {
+    grid-template-columns: 1fr 1fr;
   }
 }
