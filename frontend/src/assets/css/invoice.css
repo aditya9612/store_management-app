@@ -1,214 +1,218 @@
-/* ==========================
-   Invoice Generator Styling
-========================== */
+/* ===================== General ===================== */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f9fafb;
+  color: #222;
+  margin: 0;
+  padding: 0;
+}
+
 .invoices-section {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 15px;
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 10px;
 }
 
-/* Grid Layout */
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #1d4ed8;
+  font-size: 28px;
+}
+
+/* ===================== Grid ===================== */
 .invoice-grid {
-  display: grid;
-  grid-template-columns: 1fr 420px;
+  display: flex;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
-/* Invoice Card */
 .invoice-card {
+  flex: 1;
+  min-width: 300px;
   background: #fff;
-  padding: 15px;
+  padding: 20px;
   border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(19, 23, 34, 0.06);
-  width: 100%;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
 }
 
 .invoice-card h3 {
-  margin: 0 0 15px;
-  font-size: 18px;
+  margin-bottom: 15px;
+  color: #1d4ed8;
 }
 
-/* Form Labels & Inputs */
+/* ===================== Form Inputs ===================== */
 .invoice-card label {
   display: block;
-  margin: 10px 0 5px;
-  font-weight: 600;
-  font-size: 14px;
+  margin-top: 10px;
+  font-weight: 500;
 }
 
-.invoice-card input[type="text"],
-.invoice-card input[type="number"],
-.invoice-card input[type="email"],
-.invoice-card textarea {
+.invoice-card input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #e6e9ef;
-  margin-bottom: 10px;
-  outline: none;
+  padding: 8px 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
   font-size: 14px;
 }
 
-.invoice-card textarea {
-  min-height: 80px;
+.invoice-card input:focus {
+  border-color: #1d4ed8;
+  outline: none;
 }
 
-/* Item Form Row */
+/* ===================== Item Form ===================== */
 .item-form {
-  display: grid;
-  grid-template-columns: 1fr 100px 120px 110px;
+  display: flex;
   gap: 10px;
-  align-items: center;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
 }
 
 .item-form input {
-  padding: 8px 10px;
-  font-size: 14px;
+  flex: 1;
+  min-width: 80px;
 }
 
-/* Small Buttons */
+/* ===================== Buttons ===================== */
 .small-btn {
-  padding: 8px 12px;
-  background: #6b7280;
-  color: #fff;
-  border-radius: 8px;
+  padding: 6px 12px;
+  background: #e5e7eb;
+  color: #222;
   border: none;
+  border-radius: 5px;
   cursor: pointer;
   font-size: 13px;
 }
+
 .small-btn:hover {
-  opacity: 0.95;
+  background: #d1d5db;
 }
 
-/* Items Mini Table */
+.blue {
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+}
+
+.blue:hover {
+  background: #2563eb;
+}
+
+.fullwidth {
+  width: 100%;
+  margin-top: 15px;
+}
+
+/* ===================== Tables ===================== */
 .mini-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 15px;
+  margin-top: 10px;
   font-size: 14px;
 }
 
 .mini-table th,
 .mini-table td {
-  border: 1px solid #f1f3f5;
   padding: 8px;
+  border: 1px solid #e6e6e6;
+  text-align: left;
 }
 
-.items-list .muted {
-  color: #6b7280;
-  font-size: 13px;
+.mini-table th {
+  background: #f3f4f6;
 }
 
-/* Action Buttons */
-.blue {
-  background: #1d4ed8;
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-}
-.fullwidth {
-  width: 100%;
-  margin-top: 10px;
-}
-.blue:hover {
-  opacity: 0.95;
-}
-
-/* Invoice List */
+/* ===================== Invoice List ===================== */
 .invoice-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .invoice-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 15px;
-  border-radius: 8px;
-  background: #fafafa;
-  border: 1px solid #f1f5f9;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
   font-size: 14px;
 }
 
-.invoice-row .muted {
-  color: #6b7280;
-  font-size: 13px;
-}
-
-/* Invoice Action Buttons */
 .invoice-actions button {
-  margin-left: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  color: #fff;
-  font-size: 13px;
+  margin-left: 5px;
+  font-size: 12px;
 }
 
-.invoice-actions button:first-child {
-  background: #2563eb;
+.muted {
+  color: #666;
+  font-size: 12px;
 }
 
-.invoice-actions button:last-child {
-  background: #10b981;
+/* ===================== Invoice Print Layout ===================== */
+.inv-wrap {
+  max-width: 800px;
+  margin: 0 auto;
+  border: 1px solid #eee;
+  padding: 24px;
 }
 
-.invoice-actions button:hover {
-  opacity: 0.95;
+.inv-wrap header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
 }
 
-/* ==========================
-   Responsive Adjustments
-========================== */
-@media (max-width: 1024px) {
-  .invoice-grid {
-    grid-template-columns: 1fr;
-  }
-  .item-form {
-    grid-template-columns: 1fr 80px 100px 100px;
-  }
+.inv-wrap .brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d4ed8;
 }
 
+.inv-wrap .meta {
+  text-align: right;
+}
+
+.inv-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.inv-wrap th,
+.inv-wrap td {
+  padding: 10px;
+  border: 1px solid #e6e6e6;
+  text-align: left;
+}
+
+.inv-wrap .totals {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inv-wrap .totals table {
+  width: 320px;
+}
+
+.inv-wrap .small {
+  font-size: 12px;
+  color: #666;
+  margin-top: 10px;
+}
+
+/* ===================== Responsive ===================== */
 @media (max-width: 768px) {
-  .item-form {
-    grid-template-columns: 1fr 70px 90px 90px;
-  }
-  .invoice-card input,
-  .invoice-card textarea {
-    font-size: 13px;
-  }
-  .invoice-actions button {
-    padding: 6px 8px;
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .item-form {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .invoice-actions {
-    display: flex;
+  .invoice-grid {
     flex-direction: column;
   }
-  .invoice-actions button {
-    margin: 4px 0;
-  }
-  .invoice-row {
+  .item-form {
     flex-direction: column;
-    align-items: flex-start;
   }
-  .invoice-row .muted {
-    margin-top: 4px;
+  .item-form input {
+    width: 100%;
   }
 }
