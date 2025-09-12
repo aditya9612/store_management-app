@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine
-from .routers import owners, customers
+from .routers import owners, customers,bulk_upload,orders
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -26,6 +26,8 @@ app.add_middleware(
 # Include routers
 app.include_router(owners.router)
 app.include_router(customers.router)
+app.include_router(orders.router)
+app.include_router(bulk_upload.router)
 
 # Root endpoint
 @app.get("/")

@@ -1,43 +1,74 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from datetime import datetime
+from typing import List
 
-# Customer Schemas
+# Owner
+class OwnerBase(BaseModel):
+    name: str
+    email: str
+    mobile: str
+    shop_name: str
+    address: str
+
+class OwnerCreate(OwnerBase):
+    password: str
+
+class OwnerOut(OwnerBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+
+# Customer
 class CustomerBase(BaseModel):
     name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    email: str
+    phone: str
+    address: str | None = None
 
 class CustomerCreate(CustomerBase):
     pass
 
 class CustomerOut(CustomerBase):
     id: int
+    owner_id: int
     class Config:
         from_attributes = True
 
 
-# Owner Schemas
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+# Order Items
+class OrderItemBase(BaseModel):
+    product_id: int
+    quantity: int
+    price: float
 
+class OrderItemCreate(OrderItemBase):
+    pass
 
-class OwnerBase(BaseModel):
-    name: str
-    email: Optional[EmailStr] = None
-    mobile: str
-    shop_name: str
-    address: Optional[str] = None
-
-
-class OwnerCreate(OwnerBase):
-    password: str
-
-
-class OwnerOut(OwnerBase):
+class OrderItemOut(OrderItemBase):
     id: int
+    class Config:
+        from_attributes = True
+
+
+# Orders
+class OrderBase(BaseModel):
+    owner_id: int
+    customer_id: int
+
+class OrderCreate(OrderBase):
+    items: List[OrderItemCreate]
+
+class OrderOut(OrderBase):
+    id: int
+    total: float
+    status: str
+    created_at: datetime
+    items: List[OrderItemOut]
 
     class Config:
         from_attributes = True
+
 
 class Token(BaseModel):
     access_token: str
