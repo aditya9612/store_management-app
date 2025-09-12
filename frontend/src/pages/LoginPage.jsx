@@ -22,7 +22,7 @@ function AuthPage() {
 
   const navigate = useNavigate();
 
-  // ✅ Redirect if already logged in
+  // ✅ Auto-login if already logged in
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isOwnerLoggedIn");
     const ownerData = localStorage.getItem("loggedInOwner");
@@ -32,26 +32,32 @@ function AuthPage() {
     }
   }, [navigate]);
 
-  // Handle input change
+  // ✅ Handle form input
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ Register shop owner
+  // ✅ Register new shop owner
   const handleRegister = (e) => {
     e.preventDefault();
     const existingOwners = JSON.parse(localStorage.getItem("shopOwners")) || [];
 
+    // check if email/phone already exists
     const exists = existingOwners.some(
       (owner) =>
         owner.email === formData.email || owner.number === formData.number
     );
     if (exists) {
-      alert("Email or phone number already registered!");
+      alert("Email or phone already registered!");
       return;
     }
 
-    const updatedOwners = [...existingOwners, formData];
+    const newOwner = {
+      ...formData,
+      id: Date.now(),
+    };
+
+    const updatedOwners = [...existingOwners, newOwner];
     localStorage.setItem("shopOwners", JSON.stringify(updatedOwners));
 
     alert("Registration successful! Please login.");
@@ -66,10 +72,10 @@ function AuthPage() {
     setIsRegister(false);
   };
 
-  // ✅ Send OTP
+  // ✅ Send OTP for login
   const sendOtp = () => {
     if (!loginInput) {
-      alert("Enter your registered email or phone number.");
+      alert("Enter your registered email or phone.");
       return;
     }
 
@@ -79,7 +85,7 @@ function AuthPage() {
     );
 
     if (!owner) {
-      alert("No registered owner found with this email or phone number.");
+      alert("No shop owner found with this email or phone.");
       return;
     }
 
@@ -87,11 +93,11 @@ function AuthPage() {
     setGeneratedOtp(otpCode);
     setOtpSent(true);
 
-    // ✅ Mock OTP display (for demo/testing)
-    alert(`Mock OTP: ${otpCode}`);
+    // ✅ For real use, integrate SMS/Email API here
+    alert(`Mock OTP for ${owner.shopName}: ${otpCode}`);
   };
 
-  // ✅ Verify OTP
+  // ✅ Verify OTP and login
   const verifyOtp = (e) => {
     e.preventDefault();
     const owners = JSON.parse(localStorage.getItem("shopOwners")) || [];
@@ -100,7 +106,7 @@ function AuthPage() {
     );
 
     if (!owner) {
-      alert("No registered owner found.");
+      alert("No shop owner found.");
       return;
     }
 
@@ -108,7 +114,7 @@ function AuthPage() {
       localStorage.setItem("isOwnerLoggedIn", "true");
       localStorage.setItem("loggedInOwner", JSON.stringify(owner));
       setLoggedInOwner(owner);
-      alert("Login successful ✅");
+      alert(`Welcome ${owner.shopName} ✅`);
       navigate("/dashboard");
     } else {
       alert("Invalid OTP.");
@@ -130,7 +136,7 @@ function AuthPage() {
     <div className="auth-container">
       {isRegister ? (
         <div className="form-box">
-          <h2>Shop Owner Registration</h2>
+          <h2>Register Store Owner</h2>
           <form onSubmit={handleRegister}>
             <input
               type="text"
@@ -182,13 +188,13 @@ function AuthPage() {
             />
             <button type="submit">Register</button>
             <p onClick={() => setIsRegister(false)} className="toggle-text">
-              Already registered? Login
+              Already have an account? Login
             </p>
           </form>
         </div>
       ) : (
         <div className="form-box">
-          <h2>Shop Owner Login</h2>
+          <h2>Store Owner Login</h2>
           <form onSubmit={verifyOtp}>
             <input
               type="text"
@@ -214,7 +220,7 @@ function AuthPage() {
               <button type="submit">Verify & Login</button>
             )}
             <p onClick={() => setIsRegister(true)} className="toggle-text">
-              New user? Register
+              New user? Register here
             </p>
           </form>
         </div>

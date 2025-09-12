@@ -1,23 +1,32 @@
 import React, { useState, useEffect } from "react";
 import "@assets/css/dashboard.css";
 
-export default function Customers() {
+export default function Customers({ loggedInOwner, onCustomersChange }) {
+  const ownerId = loggedInOwner?.id;
+
   const [customers, setCustomers] = useState(() => {
-    // ✅ Load from localStorage
-    return JSON.parse(localStorage.getItem("customers")) || [];
+    if (ownerId) {
+      return JSON.parse(localStorage.getItem(`customers_${ownerId}`)) || [];
+    }
+    return [];
   });
 
-  // ✅ Save to localStorage whenever customers change
+  // ✅ Save per-owner customers + notify dashboard
   useEffect(() => {
-    localStorage.setItem("customers", JSON.stringify(customers));
-  }, [customers]);
+    if (ownerId) {
+      localStorage.setItem(`customers_${ownerId}`, JSON.stringify(customers));
+      if (onCustomersChange) {
+        onCustomersChange(customers);
+      }
+    }
+  }, [customers, ownerId, onCustomersChange]);
 
   const handleAddCustomer = (e) => {
     e.preventDefault();
-    const name = e.target.name.value;
-    const email = e.target.email.value;
-    const phone = e.target.phone.value;
-    const address = e.target.address.value;
+    const name = e.target.name.value.trim();
+    const email = e.target.email.value.trim();
+    const phone = e.target.phone.value.trim();
+    const address = e.target.address.value.trim();
 
     if (name && email && phone) {
       setCustomers([...customers, { name, email, phone, address }]);

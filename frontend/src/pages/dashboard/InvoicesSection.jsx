@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "@assets/css/invoice.css";
 
-export default function InvoicesSection({ invoices, setInvoices }) {
+export default function InvoicesSection({ invoices, setInvoices, loggedInOwner }) {
   const [customer, setCustomer] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -10,19 +10,34 @@ export default function InvoicesSection({ invoices, setInvoices }) {
   const [itemQty, setItemQty] = useState("");
   const [itemRate, setItemRate] = useState("");
   const [itemDiscount, setItemDiscount] = useState("");
+  const [shopDetails, setShopDetails] = useState(null);
 
-  // ✅ Load invoices from localStorage when component mounts
+  const ownerId = loggedInOwner?.id;
+
+  // ✅ Load invoices and shop details per owner
   useEffect(() => {
-    const storedInvoices = JSON.parse(localStorage.getItem("invoices")) || [];
-    setInvoices(storedInvoices);
-  }, [setInvoices]);
+    if (ownerId) {
+      const storedInvoices =
+        JSON.parse(localStorage.getItem(`invoices_${ownerId}`)) || [];
+      setInvoices(storedInvoices);
 
-  // ✅ Save invoices to localStorage whenever they change
+      const storedShop = loggedInOwner || {};
+      setShopDetails(storedShop);
+    }
+  }, [setInvoices, ownerId, loggedInOwner]);
+
+  // ✅ Save invoices per owner
   useEffect(() => {
-    localStorage.setItem("invoices", JSON.stringify(invoices));
-  }, [invoices]);
+    if (ownerId) {
+      localStorage.setItem(`invoices_${ownerId}`, JSON.stringify(invoices));
+    }
+  }, [invoices, ownerId]);
 
-  const currency = (n) => `₹${Number(n).toLocaleString()}`;
+  const currency = (n) =>
+    `₹${Number(n).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   const handleAddItem = (e) => {
     e.preventDefault();
@@ -65,6 +80,7 @@ export default function InvoicesSection({ invoices, setInvoices }) {
       address,
       items,
       total: subtotal,
+      shop: shopDetails || {},
     };
 
     const updatedInvoices = [newInvoice, ...invoices];
@@ -81,16 +97,39 @@ export default function InvoicesSection({ invoices, setInvoices }) {
       (s, it) => s + it.qty * it.rate * (1 - it.discount / 100),
       0
     );
+
+    const shop = invoice.shop || {};
+
     const html = `
       <html>
-      <head><title>Invoice #${invoice.number}</title></head>
+      <head>
+        <title>Invoice #${invoice.number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h2, h3 { margin: 5px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+          .header { border-bottom: 2px solid #000; margin-bottom: 15px; }
+          .shop { font-size: 14px; }
+        </style>
+      </head>
       <body>
-        <h2>Invoice #${invoice.number}</h2>
+        <div class="header">
+          <h2>${shop.shopName || "Shop Name"}</h2>
+          <p class="shop">
+            ${shop.address || ""}<br/>
+            Phone: ${shop.number || ""} | Email: ${shop.email || ""}<br/>
+            GST: ${shop.gst || ""}
+          </p>
+        </div>
+
+        <h3>Invoice #${invoice.number}</h3>
         <p>Date: ${invoice.date}</p>
-        <p>Customer: ${invoice.customer}</p>
+        <p><strong>Customer:</strong> ${invoice.customer}</p>
         <p>Phone: ${invoice.phone}</p>
         <p>Address: ${invoice.address || ""}</p>
-        <table border="1" cellpadding="5" cellspacing="0">
+
+        <table>
           <tr><th>Item</th><th>Qty</th><th>Rate</th><th>Discount</th><th>Amount</th></tr>
           ${invoice.items
             .map(
@@ -110,6 +149,7 @@ export default function InvoicesSection({ invoices, setInvoices }) {
       </body>
       </html>
     `;
+
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) alert("Pop-up blocked!");
     w.document.write(html);
@@ -142,7 +182,9 @@ export default function InvoicesSection({ invoices, setInvoices }) {
   return (
     <div className="invoices-section">
       <h1>Invoice Generator 🧾</h1>
+
       <div className="invoice-grid">
+        {/* CREATE INVOICE */}
         <div className="invoice-card">
           <h3>Create Invoice</h3>
           <form onSubmit={handleGenerateInvoice}>
@@ -230,6 +272,7 @@ export default function InvoicesSection({ invoices, setInvoices }) {
           </form>
         </div>
 
+        {/* LIST INVOICES */}
         <div className="invoice-card">
           <h3>Invoices</h3>
           <ul className="invoice-list">
