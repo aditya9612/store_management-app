@@ -11,7 +11,7 @@ export default function Customers({ loggedInOwner, onCustomersChange }) {
     return [];
   });
 
-  // ✅ Save per-owner customers + notify dashboard
+  // Save per-owner customers + notify dashboard
   useEffect(() => {
     if (ownerId) {
       localStorage.setItem(`customers_${ownerId}`, JSON.stringify(customers));
@@ -35,7 +35,7 @@ export default function Customers({ loggedInOwner, onCustomersChange }) {
   };
 
   return (
-    <div>
+    <div className="customers-container">
       <h1>Customer Management 👥</h1>
 
       <form onSubmit={handleAddCustomer} className="form-card">
@@ -52,13 +52,32 @@ export default function Customers({ loggedInOwner, onCustomersChange }) {
         <button className="blue">Add Customer</button>
       </form>
 
-      <ul className="list-card">
-        {customers.map((c, idx) => (
-          <li key={idx}>
-            <strong>{c.name}</strong> — {c.email} — {c.phone} — {c.address}
-          </li>
-        ))}
-      </ul>
+      {customers.length > 0 && (
+        <div className="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customers.map((c, idx) => (
+                <tr key={idx}>
+                  <td>{idx + 1}</td>
+                  <td>{c.name}</td>
+                  <td>{c.email}</td>
+                  <td>{c.phone}</td>
+                  <td>{c.address || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
