@@ -1,26 +1,41 @@
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
 
 // ✅ Public Pages
 import Home from "@pages/Home";
 import About from "@pages/About";
 import Product from "@pages/Product";
-import Offers from "@pages/Offers";       // Customer-facing offers
+import Offers from "@pages/Offers";
 import Contact from "@pages/Contact";
 
 // ✅ Shop Owner Pages
 import LoginPage from "@pages/LoginPage";
 import DashBoard from "@dashboard/DashBoard";
+import OffersAdmin from "@dashboard/OffersAdmin"; // ✅ new: shop owner manages offers
 
-// ✅ Components
+// ✅ Company Admin Pages
+import CompanyAdmin from "@pages/CompanyAdmin";
+import CompanyAdminLogin from "@pages/CompanyAdminLogin";
+
+// ✅ Shared Components
 import Header from "@components/Header";
 import Footer from "@components/Footer";
 
-// ✅ Layout wrapper to hide Header/Footer on Dashboard
+
+// ✅ Layout wrapper
 function Layout({ children }) {
   const location = useLocation();
 
-  // Hide Header + Footer on all dashboard pages
-  const hideHeaderFooter = location.pathname.startsWith("/dashboard");
+  // hide Header/Footer on dashboard & admin routes
+  const hideHeaderFooter =
+    location.pathname.startsWith("/dashboard") ||
+    location.pathname.startsWith("/company-admin") ||
+    location.pathname.startsWith("/admin-login");
 
   return (
     <>
@@ -33,23 +48,30 @@ function Layout({ children }) {
 
 // ✅ Protected Route for Shop Owner
 function PrivateRoute({ children }) {
-  const isOwnerLoggedIn = localStorage.getItem("isOwnerLoggedIn");
-  return isOwnerLoggedIn ? children : <Navigate to="/owner-login" replace />;
+  const loggedInOwner = localStorage.getItem("loggedInOwner");
+  return loggedInOwner ? children : <Navigate to="/owner-login" replace />;
 }
+
+// ✅ Protected Route for Company Admin
+function AdminRoute({ children }) {
+  const isAdmin = localStorage.getItem("isAdmin");
+  return isAdmin ? children : <Navigate to="/admin-login" replace />;
+}
+
 
 export default function AppRouter() {
   return (
     <Router>
       <Layout>
         <Routes>
-          {/* ✅ Public Routes (Customer-facing) */}
+          {/* ==================== Public (Customer Facing) ==================== */}
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/product" element={<Product />} />
           <Route path="/offers" element={<Offers />} />
           <Route path="/contact" element={<Contact />} />
 
-          {/* ✅ Shop Owner Routes (Hidden from customers) */}
+          {/* ==================== Shop Owner ==================== */}
           <Route path="/owner-login" element={<LoginPage />} />
           <Route
             path="/dashboard"
@@ -59,8 +81,27 @@ export default function AppRouter() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/dashboard/offers"
+            element={
+              <PrivateRoute>
+                <OffersAdmin />
+              </PrivateRoute>
+            }
+          />
 
-          {/* Fallback */}
+          {/* ==================== Company Admin ==================== */}
+          <Route path="/admin-login" element={<CompanyAdminLogin />} />
+          <Route
+            path="/company-admin"
+            element={
+              <AdminRoute>
+                <CompanyAdmin />
+              </AdminRoute>
+            }
+          />
+
+          {/* ==================== Fallback ==================== */}
           <Route path="*" element={<h2>404 - Page Not Found</h2>} />
         </Routes>
       </Layout>

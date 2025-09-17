@@ -3,15 +3,13 @@ import React, { useState, useEffect } from "react";
 export default function OffersAdmin() {
   const [offers, setOffers] = useState([]);
 
-  // Load saved offers from localStorage on mount
   useEffect(() => {
-    const storedOffers = localStorage.getItem("offers");
-    if (storedOffers) {
-      setOffers(JSON.parse(storedOffers));
+    const stored = localStorage.getItem("offers");
+    if (stored) {
+      setOffers(JSON.parse(stored));
     }
   }, []);
 
-  // Add new offer
   const handleAddOffer = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -21,41 +19,40 @@ export default function OffersAdmin() {
       title: formData.get("title"),
       description: formData.get("description"),
       price: parseFloat(formData.get("price")),
-      expiresAt: new Date(formData.get("expiresAt")).toLocaleString(),
+      expiresAt: formData.get("expiresAt"), // keep as ISO string
     };
 
-    const updatedOffers = [newOffer, ...offers];
-
-    // Save in state + localStorage
-    setOffers(updatedOffers);
-    localStorage.setItem("offers", JSON.stringify(updatedOffers));
+    const updated = [newOffer, ...offers];
+    setOffers(updated);
+    localStorage.setItem("offers", JSON.stringify(updated));
 
     e.target.reset();
   };
 
   return (
-    <div style={{ maxWidth: "900px", margin: "20px auto", fontFamily: "Arial" }}>
+    <div style={{ maxWidth: "900px", margin: "20px auto" }}>
       <h1>Offer Management 🎁</h1>
-
-      {/* Offer creation form */}
-      <form onSubmit={handleAddOffer} style={{ marginBottom: "20px" }}>
+      <form onSubmit={handleAddOffer}>
         <input type="text" name="title" placeholder="Offer Title" required />
-        <textarea name="description" placeholder="Offer Description" required />
-        <input type="number" name="price" placeholder="Offer Price (₹)" required />
+        <textarea name="description" placeholder="Description" required />
+        <input type="number" name="price" placeholder="Price ₹" required />
         <input type="datetime-local" name="expiresAt" required />
         <button type="submit">Create Offer</button>
       </form>
 
-      {/* List of created offers (admin view) */}
-      <ul>
-        {offers.length === 0 && <p>No offers created yet.</p>}
-        {offers.map((offer) => (
-          <li key={offer.id}>
-            <strong>{offer.title}</strong> - {offer.description} - ₹
-            {offer.price} - Expires: {offer.expiresAt}
-          </li>
-        ))}
-      </ul>
+      <h2>Created Offers</h2>
+      {offers.length === 0 ? (
+        <p>No offers created.</p>
+      ) : (
+        <ul>
+          {offers.map((o) => (
+            <li key={o.id}>
+              <b>{o.title}</b> - {o.description} - ₹{o.price} -{" "}
+              {new Date(o.expiresAt).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -69,11 +69,8 @@ export default function Header() {
                 <Link className="nav-link" to="/product" onClick={() => setIsOpen(false)}>Products</Link>
               </li>
               <li className="nav-item">
-                <Link className="nav-link" to="/blog" onClick={() => setIsOpen(false)}>Offers</Link>
+                <Link className="nav-link" to="/offers" onClick={() => setIsOpen(false)}>Offers</Link>
               </li>
-              {/* <li className="nav-item">
-                <Link className="nav-link" to="/login" onClick={() => setIsOpen(false)}>Login</Link>
-              </li> */}
               <li className="nav-item">
                 <Link className="nav-link" to="/contact" onClick={() => setIsOpen(false)}>Contact</Link>
               </li>
