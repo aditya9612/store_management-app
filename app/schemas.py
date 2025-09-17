@@ -1,29 +1,58 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List
+from typing import List,Optional
 
-# Owner
+# ---------------- Owner ----------------
 class OwnerBase(BaseModel):
     name: str
-    email: str
+    email: Optional[str] = None
     mobile: str
     shop_name: str
-    address: str
+    address: Optional[str] = None
 
 class OwnerCreate(OwnerBase):
-    password: str
+    password: str  # optional if using password
 
 class OwnerOut(OwnerBase):
     id: int
+    otp_code: Optional[str] = None
+    otp_expires_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 
+# ---------------- Store ----------------
+class StoreBase(BaseModel):
+    name: str
+    location: str | None = None
+class StoreCreate(StoreBase):
+    owner_id: int
 
-# Customer
+class StoreOut(StoreBase):
+    id: int
+    owner_id: int
+    class Config:
+        from_attributes = True
+
+# ---------------- StoreMan ----------------
+class StoreManBase(BaseModel):
+    name: str
+    mobile: str
+
+class StoreManCreate(StoreManBase):
+    store_id: int
+
+class StoreManOut(StoreManBase):
+    id: int
+    store_id: int
+    class Config:
+        from_attributes = True
+
+# ---------------- Customer ----------------
 class CustomerBase(BaseModel):
     name: str
-    email: str
-    phone: str
+    email: str| None = None
+    phone: str | None = None
     address: str | None = None
 
 class CustomerCreate(CustomerBase):
@@ -31,12 +60,12 @@ class CustomerCreate(CustomerBase):
 
 class CustomerOut(CustomerBase):
     id: int
-    owner_id: int
+    store_id: int
     class Config:
         from_attributes = True
 
 
-# Order Items
+# ---------------- Order Items ----------------
 class OrderItemBase(BaseModel):
     product_id: int
     quantity: int
@@ -51,9 +80,9 @@ class OrderItemOut(OrderItemBase):
         from_attributes = True
 
 
-# Orders
+# ---------------- Orders ----------------
 class OrderBase(BaseModel):
-    owner_id: int
+    store_id: int
     customer_id: int
 
 class OrderCreate(OrderBase):
@@ -70,6 +99,18 @@ class OrderOut(OrderBase):
         from_attributes = True
 
 
+# ---------------- Token ----------------
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+# ---------------- OTP ----------------
+class OTPRequest(BaseModel):
+    mobile: str
+    role: str  # "owner" and "storeman"
+
+class OTPVerify(BaseModel):
+    mobile: str
+    otp: str
+    role: str

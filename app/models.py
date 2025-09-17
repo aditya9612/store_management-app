@@ -12,16 +12,44 @@ class Owner(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    email = Column(String(100), unique=True, nullable=True)    # gmail / email
+    email = Column(String(100), unique=True, nullable=True)    # optional
     mobile = Column(String(15), unique=True, nullable=False)   # login with mobile
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False)        # password/OTP hash
     shop_name = Column(String(200), nullable=False)
     address = Column(String(255), nullable=True)
+    otp_code = Column(String(6), nullable=True)
+    otp_expires_at = Column(DateTime(timezone=True), nullable=True)
 
-    customers = relationship("Customer", back_populates="owner", cascade="all, delete-orphan")
-    orders = relationship("Order", back_populates="owner")
+    # Relationships
+    stores = relationship("Store", back_populates="owner", cascade="all, delete-orphan")
 
 
+class Store(Base):
+    __tablename__ = "stores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    location = Column(String(255), nullable=True)
+    owner_id = Column(Integer, ForeignKey("owners.id"), nullable=False)
+
+    # Relationships
+    owner = relationship("Owner", back_populates="stores")
+    customers = relationship("Customer", back_populates="store", cascade="all, delete-orphan")
+    orders = relationship("Order", back_populates="store", cascade="all, delete-orphan")
+    storeman = relationship("StoreMan", back_populates="store", uselist=False, cascade="all, delete-orphan")
+
+
+class StoreMan(Base):
+    __tablename__ = "storemans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    mobile = Column(String(15), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=True)   # optional
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
+
+    # Relationships
+    store = relationship("Store", back_populates="storeman")
 
 
 class Customer(Base):
@@ -31,25 +59,25 @@ class Customer(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(100), nullable=True)
     phone = Column(String(15), nullable=True)
-    owner_id = Column(Integer, ForeignKey("owners.id"))
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
 
-    owner = relationship("Owner", back_populates="customers")
-    orders = relationship("Order", back_populates="customer")
-
-
+    # Relationships
+    store = relationship("Store", back_populates="customers")
+    orders = relationship("Order", back_populates="customer", cascade="all, delete-orphan")
 
 
 class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    owner_id = Column(Integer, ForeignKey("owners.id"), nullable=False)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     total = Column(Float, nullable=False, default=0.0)
-    status = Column(String(100))
+    status = Column(String(100), default="Pending")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    owner = relationship("Owner", back_populates="orders")
+    # Relationships
+    store = relationship("Store", back_populates="orders")
     customer = relationship("Customer", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
@@ -63,6 +91,5 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False)
     price = Column(Float, nullable=False)
 
-    order = relationship("Order", back_populates="items") 
-
- 
+    # Relationships
+    order = relationship("Order", back_populates="items")
