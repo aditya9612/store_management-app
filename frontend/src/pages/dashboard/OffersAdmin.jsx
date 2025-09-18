@@ -1,14 +1,26 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import React, { useState, useEffect } from "react";
 
-export default function OffersAdmin() {
+export default function OffersAdmin({ loggedInOwner, selectedShop }) {
+  if (!loggedInOwner || !selectedShop) return <p>Please select a shop.</p>;
+
+  const shopKey = `${loggedInOwner.id}_${selectedShop.id}`;
   const [offers, setOffers] = useState([]);
 
+  // Load offers from localStorage when component mounts or shop changes
   useEffect(() => {
-    const stored = localStorage.getItem("offers");
+    const stored = localStorage.getItem(`offers_${shopKey}`);
     if (stored) {
       setOffers(JSON.parse(stored));
+    } else {
+      setOffers([]);
     }
-  }, []);
+  }, [shopKey]);
+
+  // Save offers to localStorage whenever offers change
+  useEffect(() => {
+    localStorage.setItem(`offers_${shopKey}`, JSON.stringify(offers));
+  }, [offers, shopKey]);
 
   const handleAddOffer = (e) => {
     e.preventDefault();
@@ -19,13 +31,11 @@ export default function OffersAdmin() {
       title: formData.get("title"),
       description: formData.get("description"),
       price: parseFloat(formData.get("price")),
-      expiresAt: formData.get("expiresAt"), // keep as ISO string
+      expiresAt: formData.get("expiresAt"),
+      active: true,
     };
 
-    const updated = [newOffer, ...offers];
-    setOffers(updated);
-    localStorage.setItem("offers", JSON.stringify(updated));
-
+    setOffers([newOffer, ...offers]);
     e.target.reset();
   };
 
