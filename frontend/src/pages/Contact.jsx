@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function Contact({ loggedInOwner, selectedShop }) {
+export default function Contact() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,11 +23,6 @@ export default function Contact({ loggedInOwner, selectedShop }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!loggedInOwner || !selectedShop) {
-      alert("No shop selected. Please try again.");
-      return;
-    }
-
     const newCustomer = {
       id: Date.now(),
       name: formData.name,
@@ -37,11 +32,15 @@ export default function Contact({ loggedInOwner, selectedShop }) {
       notes: `Enquiry: ${formData.subject} - ${formData.message}`,
     };
 
-    // 🔹 Save enquiry only to current shop’s customers
-    const key = `customers_${loggedInOwner.id}_${selectedShop.id}`;
-    const existingCustomers = JSON.parse(localStorage.getItem(key)) || [];
-    existingCustomers.push(newCustomer);
-    localStorage.setItem(key, JSON.stringify(existingCustomers));
+    // 🔹 Save this enquiry into every shop's customers
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach((key) => {
+      if (key.startsWith("customers_")) {
+        const existingCustomers = JSON.parse(localStorage.getItem(key)) || [];
+        existingCustomers.push(newCustomer);
+        localStorage.setItem(key, JSON.stringify(existingCustomers));
+      }
+    });
 
     setSuccess(true);
     setFormData({

@@ -16,9 +16,6 @@ export default defineConfig({
       '@images': path.resolve(__dirname, './src/asstes/images'),
       '@dashboard': path.resolve(__dirname, './src/pages/dashboard'),
       '@router': path.resolve(__dirname, './src/router'),
-
-
-
     },
   },
 })

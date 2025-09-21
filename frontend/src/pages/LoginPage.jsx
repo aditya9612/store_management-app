@@ -1,7 +1,6 @@
- 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "@assets/css/AuthPage.css";
+import "@assets/css/AuthPage.css"; // Only styles the login form
 
 function LoginPage() {
   const [loginInput, setLoginInput] = useState(""); // email or phone
@@ -35,7 +34,6 @@ function LoginPage() {
     setGeneratedOtp(otpCode);
     setOtpSent(true);
 
-    // ⚡ Owner no longer has shopName (we only store owner info now)
     alert(`Mock OTP for ${owner.name}: ${otpCode}`);
   };
 

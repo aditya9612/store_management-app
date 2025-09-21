@@ -16,7 +16,7 @@ import Contact from "@pages/Contact";
 // ✅ Shop Owner Pages
 import LoginPage from "@pages/LoginPage";
 import DashBoard from "@dashboard/DashBoard";
-import OffersAdmin from "@dashboard/OffersAdmin"; // ✅ new: shop owner manages offers
+import OffersAdmin from "@dashboard/OffersAdmin"; // ✅ Shop owner manages offers
 
 // ✅ Company Admin Pages
 import CompanyAdmin from "@pages/CompanyAdmin";
@@ -26,16 +26,16 @@ import CompanyAdminLogin from "@pages/CompanyAdminLogin";
 import Header from "@components/Header";
 import Footer from "@components/Footer";
 
-
-// ✅ Layout wrapper
+// ==================== Layout Wrapper ====================
 function Layout({ children }) {
   const location = useLocation();
 
-  // hide Header/Footer on dashboard & admin routes
+  // hide Header/Footer on dashboard and login/admin routes
   const hideHeaderFooter =
     location.pathname.startsWith("/dashboard") ||
     location.pathname.startsWith("/company-admin") ||
-    location.pathname.startsWith("/admin-login");
+    location.pathname.startsWith("/admin-login") ||
+    location.pathname.startsWith("/owner-login"); // ✅ hide Shop Owner login
 
   return (
     <>
@@ -46,19 +46,19 @@ function Layout({ children }) {
   );
 }
 
-// ✅ Protected Route for Shop Owner
+// ==================== Protected Route for Shop Owner ====================
 function PrivateRoute({ children }) {
   const loggedInOwner = localStorage.getItem("loggedInOwner");
   return loggedInOwner ? children : <Navigate to="/owner-login" replace />;
 }
 
-// ✅ Protected Route for Company Admin
+// ==================== Protected Route for Company Admin ====================
 function AdminRoute({ children }) {
   const isAdmin = localStorage.getItem("isAdmin");
   return isAdmin ? children : <Navigate to="/admin-login" replace />;
 }
 
-
+// ==================== App Router ====================
 export default function AppRouter() {
   return (
     <Router>
