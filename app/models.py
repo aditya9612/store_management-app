@@ -37,7 +37,8 @@ class Store(Base):
     customers = relationship("Customer", back_populates="store", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="store", cascade="all, delete-orphan")
     storeman = relationship("StoreMan", back_populates="store", uselist=False, cascade="all, delete-orphan")
-
+    offers = relationship("Offer", back_populates="store")
+    inquiries = relationship("Inquiry", back_populates="store", cascade="all, delete-orphan")
 
 class StoreMan(Base):
     __tablename__ = "storemans"
@@ -64,6 +65,8 @@ class Customer(Base):
     # Relationships
     store = relationship("Store", back_populates="customers")
     orders = relationship("Order", back_populates="customer", cascade="all, delete-orphan")
+    inquiries = relationship("Inquiry", back_populates="customer", cascade="all, delete-orphan")
+
 
 
 class Order(Base):
@@ -87,9 +90,54 @@ class OrderItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
-    product_id = Column(Integer, nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     price = Column(Float, nullable=False)
 
     # Relationships
     order = relationship("Order", back_populates="items")
+    product = relationship("Product", back_populates="order_items")
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    price = Column(Float, nullable=False)
+
+    order_items = relationship("OrderItem", back_populates="product")
+
+class Inquiry(Base):
+    __tablename__ = "inquiries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
+    subject = Column(String(200), nullable=False)
+    message = Column(String(500), nullable=False)
+    status = Column(String(50), default="Pending")   # Pending, Resolved, Closed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    customer = relationship("Customer", back_populates="inquiries")
+    store = relationship("Store", back_populates="inquiries")
+
+
+
+
+
+
+
+class Offer(Base):
+    __tablename__ = "offers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(String(500), nullable=False)
+    discount = Column(Integer, nullable=False)   
+    valid_until = Column(DateTime(timezone=True), nullable=False)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    store = relationship("Store", back_populates="offers")

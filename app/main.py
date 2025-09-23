@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
-from app.routers import owners, customers, orders, stores, auth
+from app.routers import owners, customers, orders, stores, auth,inquiries,offers
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -24,7 +24,10 @@ app.include_router(stores.router)
 app.include_router(customers.router)
 app.include_router(orders.router)
 app.include_router(auth.router)
+app.include_router(inquiries.router)
+app.include_router(offers.router)
 
 @app.get("/")
 def root():
     return {"message": "Store Management API running 🚀"}
+    print ("Hello, World!asddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")

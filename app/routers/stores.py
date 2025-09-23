@@ -20,7 +20,7 @@ def get_my_store(store_id: int, db: Session = Depends(get_db)):
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
     return store
-
+ 
 # ---------------- Create new store ----------------
 @router.post("/create", response_model=schemas.StoreOut)
 def create_new_store(store: schemas.StoreCreate, db: Session = Depends(get_db)):
@@ -31,3 +31,17 @@ def create_new_store(store: schemas.StoreCreate, db: Session = Depends(get_db)):
 
     # Create store
     return crud.create_store(db, store)
+@router.put("/{store_id}", response_model=schemas.StoreOut)
+def update_store(store_id: int, store: schemas.StoreBase, db: Session = Depends(get_db)):
+    db_store = crud.update_store(db, store_id, store)
+    if not db_store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    return db_store
+
+@router.delete("/{store_id}")
+def delete_store(store_id: int, db: Session = Depends(get_db)):
+    db_store = crud.delete_store(db, store_id)
+    if not db_store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    return {"message": "Store deleted successfully"}
+

@@ -1,6 +1,20 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List,Optional
+from typing import List, Optional
+
+# ---------------- Products ----------------
+class ProductBase(BaseModel):
+    name: str
+    price: float
+
+class ProductCreate(ProductBase):
+    pass
+
+class ProductOut(ProductBase):
+    id: int
+    class Config:
+        from_attributes = True
+
 
 # ---------------- Owner ----------------
 class OwnerBase(BaseModel):
@@ -11,7 +25,7 @@ class OwnerBase(BaseModel):
     address: Optional[str] = None
 
 class OwnerCreate(OwnerBase):
-    password: str  # optional if using password
+    password: str
 
 class OwnerOut(OwnerBase):
     id: int
@@ -21,10 +35,12 @@ class OwnerOut(OwnerBase):
     class Config:
         from_attributes = True
 
+
 # ---------------- Store ----------------
 class StoreBase(BaseModel):
     name: str
-    location: str | None = None
+    location: Optional[str] = None
+
 class StoreCreate(StoreBase):
     owner_id: int
 
@@ -33,6 +49,7 @@ class StoreOut(StoreBase):
     owner_id: int
     class Config:
         from_attributes = True
+
 
 # ---------------- StoreMan ----------------
 class StoreManBase(BaseModel):
@@ -48,12 +65,13 @@ class StoreManOut(StoreManBase):
     class Config:
         from_attributes = True
 
+
 # ---------------- Customer ----------------
 class CustomerBase(BaseModel):
     name: str
-    email: str| None = None
-    phone: str | None = None
-    address: str | None = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
 
 class CustomerCreate(CustomerBase):
     pass
@@ -76,6 +94,7 @@ class OrderItemCreate(OrderItemBase):
 
 class OrderItemOut(OrderItemBase):
     id: int
+    product: Optional[ProductOut] = None  
     class Config:
         from_attributes = True
 
@@ -104,13 +123,53 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+# ---------------- Invoice ----------------
+class InvoiceResponse(BaseModel):
+    message: str
+    file_path: str
 
 # ---------------- OTP ----------------
 class OTPRequest(BaseModel):
     mobile: str
-    role: str  # "owner" and "storeman"
+    role: str  # "owner" or "storeman"
 
 class OTPVerify(BaseModel):
     mobile: str
     otp: str
     role: str
+# ---------------- Inquiry ----------------
+class InquiryBase(BaseModel):
+    subject: str
+    message: str
+
+class InquiryCreate(InquiryBase):
+    customer_id: int
+    store_id: int
+
+class InquiryOut(InquiryBase):
+    id: int
+    customer_id: int
+    store_id: int
+    status: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# ---------------- Offer ----------------
+class OfferBase(BaseModel):
+    title: str
+    description: str
+    discount: float   
+    valid_until: datetime
+    store_id: Optional[int] = None  # None = all stores
+   # owner_id: int Optional[int] = None  # None = admin created
+
+class OfferCreate(OfferBase):
+    pass
+
+class OfferOut(OfferBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
