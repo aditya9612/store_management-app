@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .. import schemas, crud, database, models
 from datetime import datetime, timedelta
+from app.auth import create_access_token  # Import the token creator
 
 # Create an APIRouter instance for authentication routes
 router = APIRouter(
@@ -37,7 +38,7 @@ def request_otp(otp_request: schemas.OTPRequest, db: Session = Depends(database.
     return {"message": "OTP sent successfully."}
 
 # Endpoint to verify the OTP
-@router.post("/verify-otp")
+@router.post("/verify-otp", response_model=schemas.Token)
 def verify_otp(otp_verify: schemas.OTPVerify, db: Session = Depends(database.get_db)):
     # Check if the user is an Owner or a StoreMan
     if otp_verify.role == "owner":
@@ -56,8 +57,10 @@ def verify_otp(otp_verify: schemas.OTPVerify, db: Session = Depends(database.get
         db.rollback()
         raise HTTPException(status_code=400, detail="Invalid or expired OTP.")
 
-    # Commit the changes (clearing the OTP)
     db.commit()
 
-    # In a real application, you would generate a JWT token here
-    return {"message": "OTP verified successfully."}
+    # Generate JWT token
+    token_data = {"sub": str(user.id), "role": otp_verify.role}
+    access_token = create_access_token(token_data)
+
+    return {"access_token": access_token, "token_type": "bearer"}

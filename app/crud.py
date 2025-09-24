@@ -281,3 +281,14 @@ def get_offers_by_store(db: Session, store_id: int):
 
 def get_all_offers(db: Session):
     return db.query(models.Offer).all()
+
+
+# ---------------- Auth Helpers ----------------
+def get_owner_by_id(db: Session, owner_id: int):
+    """Fetch an owner by ID"""
+    return db.query(models.Owner).filter(models.Owner.id == owner_id).first()
+
+def get_storeman_by_id(db: Session, storeman_id: int):
+    """Fetch a storeman by ID"""
+    return db.query(models.StoreMan).filter(models.StoreMan.id == storeman_id).first()
+
