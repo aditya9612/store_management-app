@@ -60,13 +60,13 @@ class Customer(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(100), nullable=True)
     phone = Column(String(15), nullable=True)
+    address=Column(String(255), nullable=True)
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
-
+    
     # Relationships
     store = relationship("Store", back_populates="customers")
     orders = relationship("Order", back_populates="customer", cascade="all, delete-orphan")
     inquiries = relationship("Inquiry", back_populates="customer", cascade="all, delete-orphan")
-
 
 
 class Order(Base):
@@ -107,7 +107,7 @@ class Product(Base):
     price = Column(Float, nullable=False)
 
     order_items = relationship("OrderItem", back_populates="product")
-
+ 
 class Inquiry(Base):
     __tablename__ = "inquiries"
 
@@ -123,12 +123,6 @@ class Inquiry(Base):
     customer = relationship("Customer", back_populates="inquiries")
     store = relationship("Store", back_populates="inquiries")
 
-
-
-
-
-
-
 class Offer(Base):
     __tablename__ = "offers"
 
@@ -139,5 +133,6 @@ class Offer(Base):
     valid_until = Column(DateTime(timezone=True), nullable=False)
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
 
     store = relationship("Store", back_populates="offers")

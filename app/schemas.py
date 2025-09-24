@@ -21,7 +21,7 @@ class OwnerBase(BaseModel):
     name: str
     email: Optional[str] = None
     mobile: str
-    shop_name: str
+    shop_name: Optional[str]=None
     address: Optional[str] = None
 
 class OwnerCreate(OwnerBase):
@@ -42,7 +42,7 @@ class StoreBase(BaseModel):
     location: Optional[str] = None
 
 class StoreCreate(StoreBase):
-    owner_id: int
+    owner_id: int 
 
 class StoreOut(StoreBase):
     id: int
@@ -72,6 +72,7 @@ class CustomerBase(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    store_id: int 
 
 class CustomerCreate(CustomerBase):
     pass
@@ -99,7 +100,7 @@ class OrderItemOut(OrderItemBase):
         from_attributes = True
 
 
-# ---------------- Orders ----------------
+# ---------------- Orders ------------
 class OrderBase(BaseModel):
     store_id: int
     customer_id: int
@@ -137,7 +138,7 @@ class OTPVerify(BaseModel):
     mobile: str
     otp: str
     role: str
-# ---------------- Inquiry ----------------
+# ---------------- Inquiry -------------
 class InquiryBase(BaseModel):
     subject: str
     message: str
