@@ -7,15 +7,22 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      // Core directories
       '@': path.resolve(__dirname, './src'),
-      '@assets': path.resolve(__dirname, './src/assets'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@pages': path.resolve(__dirname, './src/pages'),
-      '@css': path.resolve(__dirname, './src/asstes/css'),
-      '@fonts': path.resolve(__dirname, './src/asstes/fonts'),
-      '@images': path.resolve(__dirname, './src/asstes/images'),
-      '@dashboard': path.resolve(__dirname, './src/pages/dashboard'),
+      '@features': path.resolve(__dirname, './src/features'),
+      '@shared': path.resolve(__dirname, './src/shared'),
+      '@utils': path.resolve(__dirname, './src/utils'),
       '@router': path.resolve(__dirname, './src/router'),
+
+      // Feature-specific aliases
+      '@customer': path.resolve(__dirname, './src/features/customer'),
+      '@shop-owner': path.resolve(__dirname, './src/features/shop-owner'),
+      '@company-admin': path.resolve(__dirname, './src/features/company-admin'),
+
+      // Shared resources
+      '@components': path.resolve(__dirname, './src/shared/components'),
+      '@styles': path.resolve(__dirname, './src/shared/styles'),
+      '@assets': path.resolve(__dirname, './src/shared/assets'),
     },
   },
 })

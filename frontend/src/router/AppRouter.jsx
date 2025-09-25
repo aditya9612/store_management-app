@@ -3,28 +3,28 @@ import {
   Routes,
   Route,
   useLocation,
-  Navigate,
 } from "react-router-dom";
 
-// ✅ Public Pages
-import Home from "@pages/Home";
-import About from "@pages/About";
-import Product from "@pages/Product";
-import Offers from "@pages/Offers";
-import Contact from "@pages/Contact";
+// Customer Pages
+import HomePage from "@features/customer/pages/HomePage";
+import About from "@features/customer/pages/AboutPage";
+import Product from "@features/customer/pages/ProductPage";
+import Offers from "@features/customer/pages/OffersPage";
+import Contact from "@features/customer/pages/ContactPage";
 
-// ✅ Shop Owner Pages
-import LoginPage from "@pages/LoginPage";
-import DashBoard from "@dashboard/DashBoard";
-import OffersAdmin from "@dashboard/OffersAdmin"; // ✅ Shop owner manages offers
+// Shop Owner Pages
+import ShopOwnerLoginPage from "@features/shop-owner/pages/ShopOwnerLoginPage";
+import ShopSelectorPage from "@features/shop-owner/pages/ShopSelectorPage";
+import DashBoard from "@features/shop-owner/pages/DashboardPage";
 
-// ✅ Company Admin Pages
-import CompanyAdmin from "@pages/CompanyAdmin";
-import CompanyAdminLogin from "@pages/CompanyAdminLogin";
+// Company Admin Pages
+import CompanyAdminPage from "@features/company-admin/pages/CompanyAdmin";
+import CompanyAdminLoginPage from "@features/company-admin/pages/CompanyAdminLogin";
 
-// ✅ Shared Components
-import Header from "@components/Header";
-import Footer from "@components/Footer";
+// Shared Components
+import { ProtectedRoute } from "@shared/components/ProtectedRoute";
+import Header from "@shared/components/Header";
+import Footer from "@shared/components/Footer";
 
 // ==================== Layout Wrapper ====================
 function Layout({ children }) {
@@ -33,9 +33,10 @@ function Layout({ children }) {
   // hide Header/Footer on dashboard and login/admin routes
   const hideHeaderFooter =
     location.pathname.startsWith("/dashboard") ||
+    location.pathname.startsWith("/shop-selector") ||
     location.pathname.startsWith("/company-admin") ||
     location.pathname.startsWith("/admin-login") ||
-    location.pathname.startsWith("/owner-login"); // ✅ hide Shop Owner login
+    location.pathname.startsWith("/owner-login"); // ✅ hide Shop Owner pages
 
   return (
     <>
@@ -46,17 +47,7 @@ function Layout({ children }) {
   );
 }
 
-// ==================== Protected Route for Shop Owner ====================
-function PrivateRoute({ children }) {
-  const loggedInOwner = localStorage.getItem("loggedInOwner");
-  return loggedInOwner ? children : <Navigate to="/owner-login" replace />;
-}
-
-// ==================== Protected Route for Company Admin ====================
-function AdminRoute({ children }) {
-  const isAdmin = localStorage.getItem("isAdmin");
-  return isAdmin ? children : <Navigate to="/admin-login" replace />;
-}
+// Removed and replaced with shared ProtectedRoute component
 
 // ==================== App Router ====================
 export default function AppRouter() {
@@ -64,40 +55,41 @@ export default function AppRouter() {
     <Router>
       <Layout>
         <Routes>
-          {/* ==================== Public (Customer Facing) ==================== */}
-          <Route path="/" element={<Home />} />
+          {/* Public Routes (Customer) */}
+          <Route path="/" element={<HomePage />} />
           <Route path="/about" element={<About />} />
           <Route path="/product" element={<Product />} />
           <Route path="/offers" element={<Offers />} />
           <Route path="/contact" element={<Contact />} />
 
-          {/* ==================== Shop Owner ==================== */}
-          <Route path="/owner-login" element={<LoginPage />} />
+          {/* Shop Owner Routes */}
+          <Route path="/owner-login" element={<ShopOwnerLoginPage />} />
+          <Route
+            path="/shop-selector"
+            element={
+              <ProtectedRoute userType="shop-owner">
+                <ShopSelectorPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/dashboard"
             element={
-              <PrivateRoute>
+              <ProtectedRoute userType="shop-owner">
                 <DashBoard />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/offers"
-            element={
-              <PrivateRoute>
-                <OffersAdmin />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
 
-          {/* ==================== Company Admin ==================== */}
-          <Route path="/admin-login" element={<CompanyAdminLogin />} />
+
+          {/* Company Admin Routes */}
+          <Route path="/admin-login" element={<CompanyAdminLoginPage />} />
           <Route
             path="/company-admin"
             element={
-              <AdminRoute>
-                <CompanyAdmin />
-              </AdminRoute>
+              <ProtectedRoute userType="company-admin">
+                <CompanyAdminPage />
+              </ProtectedRoute>
             }
           />
 

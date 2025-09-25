@@ -1,11 +1,24 @@
 import React from "react";
 import AppRouter from "@router/AppRouter";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // ✅ Global CSS Imports
-import "@assets/css/bootstrap.css";
-import "@assets/css/style.css";
-import "@assets/css/responsive.css";
+import "@shared/styles/vendor.css";
+import "@features/customer/styles/customer-main.css";
 
 export default function App() {
-  return <AppRouter />;
+  return (
+    <>
+      <ToastContainer 
+        position="top-center"
+        autoClose={3500}
+        hideProgressBar={false}
+        closeOnClick
+        pauseOnHover
+        draggable
+      />
+      <AppRouter />
+    </>
+  );
 }

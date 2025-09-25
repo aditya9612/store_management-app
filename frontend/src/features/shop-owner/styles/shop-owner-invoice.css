@@ -1,0 +1,140 @@
+/* Shop owner invoice management styles */
+:root {
+  --invoice-bg: #f9fbfd;
+  --invoice-card-bg: #ffffff;
+  --invoice-primary: #3a86ff;
+  --invoice-text: #333;
+  --invoice-text-light: #777;
+  --invoice-border: #eef2f7;
+  --invoice-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+}
+
+.invoices-section {
+  background-color: var(--invoice-bg);
+  padding: 2rem;
+}
+
+.invoice-grid {
+  display: grid;
+  grid-template-columns: 450px 1fr;
+  gap: 2rem;
+}
+
+.invoice-card {
+  background: var(--invoice-card-bg);
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: var(--invoice-shadow);
+}
+
+.form-section {
+  margin-bottom: 1.5rem;
+}
+
+.invoice-list {
+  list-style: none;
+  padding: 0;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.invoice-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--invoice-card-bg);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.invoice-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  background: var(--invoice-bg);
+  border: 1px solid var(--invoice-border);
+  color: var(--invoice-text-light);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: var(--invoice-primary);
+  color: white;
+  transform: scale(1.1);
+}
+
+.mini-table {
+  width: 100%;
+  margin-top: 1.5rem;
+  border-collapse: collapse;
+}
+
+.mini-table th, .mini-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--invoice-border);
+}
+
+.mini-table th {
+  background-color: var(--invoice-bg);
+  font-weight: 500;
+}
+
+/* Form Specifics */
+.invoice-card form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--invoice-text-light);
+}
+
+.invoice-card form input,
+.invoice-card form select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--invoice-border);
+  border-radius: 8px;
+  background-color: var(--invoice-bg);
+  transition: all 0.3s ease;
+}
+
+.invoice-card form input:focus,
+.invoice-card form select:focus {
+  outline: none;
+  border-color: var(--invoice-primary);
+  box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.2);
+}
+
+.invoice-card form .blue.fullwidth {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  background: var(--invoice-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.invoice-card form .blue.fullwidth:hover {
+  opacity: 0.9;
+}
+
+.invoice-card hr {
+  border: none;
+  border-top: 1px solid var(--invoice-border);
+  margin: 1.5rem 0;
+}
+
+.invoice-card h4 {
+  margin-bottom: 1rem;
+  color: var(--invoice-text);
+}
