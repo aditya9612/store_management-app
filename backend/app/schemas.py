@@ -25,32 +25,58 @@ class OwnerUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     mobile: Optional[str] = None
+    password: Optional[str] = None
     shop_name: Optional[str] = None
     address: Optional[str] = None
-
-# ---------------- Store ----------------
-class StoreBase(BaseModel):
-    name: str
-    location: str | None = None
-class StoreCreate(StoreBase):
-    owner_id: int
-
-class Store(StoreBase):
-    id: int
-    owner_id: int
 
     class Config:
         from_attributes = True
 
+# Rebuild the Owner model to include the new OwnerUpdate schema
+OwnerUpdate.model_rebuild()
 
-# class StoreManCreate(StoreManBase):
-#     store_id: int
-#
-# class StoreManOut(StoreManBase):
-#     id: int
-#     store_id: int
-#     class Config:
-#         from_attributes = True
+# ---------------- StoreMan ----------------
+class StoreManBase(BaseModel):
+    name: str
+    mobile: str
+
+class StoreManCreate(StoreManBase):
+    store_id: int
+
+class StoreMan(StoreManBase):
+    id: int
+    store_id: int
+
+    class Config:
+        from_attributes = True
+
+# ---------------- Store ----------------
+class StoreBase(BaseModel):
+    name: str
+    location: Optional[str] = None
+    status: str = 'active'  # active, inactive, suspended
+
+class StoreCreate(StoreBase):
+    owner_id: int
+    storeman_name: str
+    storeman_mobile: str
+
+class Store(StoreBase):
+    id: int
+    owner_id: int
+    storeman: Optional[StoreMan] = None
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "name": "My Store",
+                "location": "123 Main St",
+                "status": "active",
+                "owner_id": 1
+            }
+        }
 
 # ---------------- Offer ----------------
 class OfferBase(BaseModel):
@@ -184,5 +210,3 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     price: Optional[float] = None
     description: Optional[str] = None
-
-Owner.model_rebuild()

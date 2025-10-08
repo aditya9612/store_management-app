@@ -30,6 +30,7 @@ class Store(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
     location = Column(String(255), nullable=True)
+    status = Column(String(20), default='active', nullable=False)  # active, inactive, suspended
     owner_id = Column(Integer, ForeignKey("owners.id"), nullable=False)
 
     # Relationships
@@ -45,7 +46,6 @@ class StoreMan(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     mobile = Column(String(15), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=True)   # optional
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
 
     # Relationships

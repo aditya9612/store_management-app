@@ -11,16 +11,7 @@ app = FastAPI()
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",    # React development server (default)
-        "http://localhost:5173",    # Vite development server (default)
-        "http://localhost:8080",    # Alternative development port
-        "http://127.0.0.1:3000",   # Alternative localhost
-        "http://127.0.0.1:5173",   # Alternative localhost
-        "http://127.0.0.1:8080",   # Alternative localhost
-        "http://localhost:5174",    # Vite alternative port
-        "http://127.0.0.1:5174",   # Alternative localhost
-    ],
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

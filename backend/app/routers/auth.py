@@ -40,12 +40,35 @@ def verify_otp(otp_verify: schemas.OTPVerify, db: Session = Depends(database.get
             user = crud.get_storeman_by_mobile(db, otp_verify.mobile)
         else:
             return JSONResponse(status_code=400, content=OnError(message="Invalid role specified"))
+
         if not user:
             return JSONResponse(status_code=404, content=OnError(message="User not found."))
+
         if not crud.verify_otp_for_user(user, otp_verify.otp):
             db.rollback()
             return JSONResponse(status_code=401, content=OnError(message="Invalid or expired OTP."))
+
         db.commit()
-        return OnSuccess(data={"owner_id": user.id, "role": otp_verify.role, "owner_name": user.name}, message="OTP verified successfully")
+
+        if otp_verify.role == "storeman":
+            # Get store information for storeman
+            storeman_store = db.query(models.Store).filter(models.Store.id == user.store_id).first()
+            if storeman_store:
+                store_status = storeman_store.status
+                return OnSuccess(
+                    data={
+                        "storeman_id": user.id,
+                        "role": otp_verify.role,
+                        "storeman_name": user.name,
+                        "store_id": user.store_id,
+                        "store_status": store_status,
+                        "store_name": storeman_store.name
+                    },
+                    message=f"OTP verified successfully. Store status: {store_status.upper()}"
+                )
+            else:
+                return JSONResponse(status_code=404, content=OnError(message="Store not found for this storeman."))
+        else:
+            return OnSuccess(data={"owner_id": user.id, "role": otp_verify.role, "owner_name": user.name}, message="OTP verified successfully")
     except Exception as e:
         return JSONResponse(status_code=500, content=OnError(message=str(e)))

@@ -1,9 +1,9 @@
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Body
+from sqlalchemy.orm import Session, joinedload
 from app import schemas, models, crud, database
 from app.response_structure import OnSuccess
-from typing import List
+from typing import List, Dict, Any
 
 router = APIRouter(prefix="/stores", tags=["Stores"])
 get_db = database.get_db
@@ -19,7 +19,7 @@ def get_stores(owner_id: int, db: Session = Depends(get_db)):
 @router.get("/details", response_model=OnSuccess[schemas.Store])
 def get_my_store(store_id: int, db: Session = Depends(get_db)):
     try:
-        store = db.query(models.Store).filter(models.Store.id == store_id).first()
+        store = db.query(models.Store).options(joinedload(models.Store.storeman)).filter(models.Store.id == store_id).first()
         if not store:
             raise HTTPException(status_code=404, detail="Store not found")
         return OnSuccess(data=store, message="Store fetched successfully")
@@ -65,21 +65,55 @@ def update_store(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/{store_id}", response_model=OnSuccess[dict])
-def delete_store(store_id: int, db: Session = Depends(get_db)):
+@router.put("/{store_id}/status", response_model=OnSuccess[schemas.Store])
+async def update_store_status(
+    store_id: int, 
+    status_data: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
     try:
         # Check if store exists
-        db_store = db.query(models.Store).filter(models.Store.id == store_id).first()
+        db_store = db.query(models.Store).options(joinedload(models.Store.storeman)).filter(models.Store.id == store_id).first()
         if not db_store:
             raise HTTPException(status_code=404, detail="Store not found")
             
-        # Delete store
-        deleted = crud.delete_store(db, store_id)
-        if not deleted:
-            raise HTTPException(status_code=500, detail="Failed to delete store")
+        # Validate status
+        valid_statuses = ['active', 'inactive', 'suspended']
+        new_status = status_data.get('status')
+        if new_status not in valid_statuses:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
             
-        return OnSuccess(data={"id": store_id}, message="Store deleted successfully")
+        # Update status
+        db_store.status = new_status
+        db.commit()
+        db.refresh(db_store)
+        
+        return OnSuccess(data=db_store, message=f"Store status updated to {new_status} successfully")
     except HTTPException as he:
         raise he
     except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{store_id}")
+def delete_store(store_id: int, db: Session = Depends(get_db)):
+    try:
+        # Check if store exists
+        db_store = db.query(models.Store).options(joinedload(models.Store.storeman)).filter(models.Store.id == store_id).first()
+        if not db_store:
+            raise HTTPException(status_code=404, detail="Store not found")
+            
+        # Delete the store using crud function
+        deleted_store = crud.delete_store(db, store_id)
+        if not deleted_store:
+            raise HTTPException(status_code=404, detail="Failed to delete store")
+            
+        return OnSuccess(data=None, message="Store deleted successfully")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
