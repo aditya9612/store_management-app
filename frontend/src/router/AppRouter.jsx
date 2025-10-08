@@ -25,6 +25,7 @@ import CompanyAdminLoginPage from "@features/company-admin/pages/CompanyAdminLog
 import { ProtectedRoute } from "@shared/components/ProtectedRoute";
 import Header from "@shared/components/Header";
 import Footer from "@shared/components/Footer";
+import ScrollToTop from "@shared/components/ScrollToTop";
 
 // ==================== Layout Wrapper ====================
 function Layout({ children }) {
@@ -53,6 +54,7 @@ function Layout({ children }) {
 export default function AppRouter() {
   return (
     <Router>
+      <ScrollToTop />
       <Layout>
         <Routes>
           {/* Public Routes (Customer) */}

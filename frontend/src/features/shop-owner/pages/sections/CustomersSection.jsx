@@ -14,6 +14,7 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [phone, setPhone] = useState(null);
 
   const fetchCustomers = useCallback(async () => {
     if (!selectedShop?.id) return;
@@ -303,19 +304,27 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
                   placeholder="Enter email address"
                 />
               </div>
-
-              <div className="form-group">
-                <label>
-                  <i className="fas fa-phone"></i>
-                  Phone
-                </label>
-                <input 
-                  name="phone" 
-                  type="tel" 
-                  required 
-                  placeholder="Enter phone number"
-                />
-              </div>
+<div className="form-group">
+  <label>
+    <i className="fas fa-phone"></i>
+    Phone
+  </label>
+  <input
+    type="tel"
+    className="form-control"
+    placeholder="Enter your phone number"
+    value={phone}
+    onChange={(e) => {
+      const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+      if (value.length <= 10) {
+        setPhone(value);
+      }
+    }}
+    pattern="[0-9]{10}"
+    maxLength="10"
+    required
+  />
+</div>
 
               <div className="form-group">
                 <label>

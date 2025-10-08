@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import "@/features/shop-owner/styles/shop-owner-dashboard.css";
 import { AuthService } from "@utils/auth";
@@ -16,6 +16,8 @@ function DashboardPage() {
   const navigate = useNavigate();
   const ownerIdStr = localStorage.getItem("owner_id");
   const ownerName = localStorage.getItem("owner_name");
+  const storemanId = localStorage.getItem("storeman_id");
+  const storemanName = localStorage.getItem("storeman_name");
   const [selectedStoreId, setSelectedStoreId] = useState(() => {
     const idStr = localStorage.getItem("selectedStoreId");
     return idStr ? parseInt(idStr) : null;
@@ -24,14 +26,20 @@ function DashboardPage() {
   // Owner and store identifiers used across effects and state
   const ownerId = ownerIdStr ? parseInt(ownerIdStr) : null;
   const loggedInOwner = ownerId ? { id: ownerId, name: ownerName || 'Shop Owner' } : null;
+  const loggedInStoreman = storemanId ? { id: storemanId, name: storemanName || 'Storeman' } : null;
   const [storeInfo, setStoreInfo] = useState(null);
-  const shopKey = ownerId && selectedStoreId ? `${ownerId}_${selectedStoreId}` : null;
+  const shopKey = (ownerId || storemanId) && selectedStoreId ? `${ownerId || storemanId}_${selectedStoreId}` : null;
+
+  // Check authentication - either owner or storeman should be authenticated
+  const isAuthenticated = ownerId || storemanId;
+  const currentUser = loggedInStoreman || loggedInOwner;
+  const authType = localStorage.getItem("auth_type") || "owner";
 
   useEffect(() => {
-    if (!ownerId) {
+    if (!isAuthenticated) {
       navigate("/owner-login");
     }
-  }, [ownerId, navigate]);
+  }, [isAuthenticated, navigate]);
 
   // -------------------- UI State --------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -50,7 +58,8 @@ function DashboardPage() {
 
   // -------------------- Shop Data --------------------
   const [loading, setLoading] = useState(true);
-  const [activePage, setActivePage] = useState("dashboard");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activePage = searchParams.get('tab') || 'dashboard';
 
   // Fetch shop data on component mount
   useEffect(() => {
@@ -62,6 +71,20 @@ function DashboardPage() {
         }
         const details = await authService.getStoreDetails(selectedStoreId);
         setStoreInfo(details.data);
+
+        // Check store status
+        if (details.data.status === 'inactive') {
+          toast.warning("This store is currently inactive. Please contact your administrator.");
+          navigate("/shop-selector");
+          return;
+        }
+
+        if (details.data.status === 'suspended') {
+          toast.error("This store has been suspended. Access denied.");
+          navigate("/shop-selector");
+          return;
+        }
+
       } catch (error) {
         toast.error(error.message);
         if (error.message.includes("unauthorized") || error.message === "Selected shop not found") {
@@ -72,10 +95,10 @@ function DashboardPage() {
       }
     };
 
-    if (ownerId && selectedStoreId) {
+    if (isAuthenticated && selectedStoreId) {
       fetchShopData();
     }
-  }, [ownerId, navigate, selectedStoreId]);
+  }, [isAuthenticated, navigate, selectedStoreId]);
 
   // -------------------- Per-shop Data --------------------
   const [customers, setCustomers] = useState(() => {
@@ -114,7 +137,6 @@ function DashboardPage() {
   // Persist per-shop data
   useEffect(() => {
     if (!shopKey) return;
-    AuthService.setTempAuthData(`customers_${shopKey}`, JSON.stringify(customers));
     AuthService.setTempAuthData(`offers_${shopKey}`, JSON.stringify(offers));
     AuthService.setTempAuthData(`products_${shopKey}`, JSON.stringify(products));
     AuthService.setTempAuthData(`invoices_${shopKey}`, JSON.stringify(invoices));
@@ -122,11 +144,11 @@ function DashboardPage() {
 
   // -------------------- Handlers --------------------
   const handleLogout = () => {
-    AuthService.removeTempAuthData("selectedStoreId");
     AuthService.logoutShopOwner();
     localStorage.removeItem("owner_id");
     localStorage.removeItem("owner_name");
     localStorage.removeItem("role");
+    localStorage.removeItem("selectedStoreId");
     navigate("/owner-login");
     toast.info("Logged out successfully");
   };
@@ -137,29 +159,35 @@ function DashboardPage() {
   const productsSold = invoices.reduce((sum, inv) => sum + (inv.items?.length || 0), 0);
 
   // -------------------- Header --------------------
-  const Header = () => (
-    <header className="top-header">
-      <div className="header-left">
-        <button 
-          className="menu-toggle"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          <i className={`fas fa-${isSidebarOpen ? 'times' : 'bars'}`}></i>
-        </button>
-        <h1>StoreHub</h1>
-      </div>
-      <div className="header-right">
-        <span className="user-info">
-          <i className="fas fa-user-circle"></i>
-          <span className="user-name">{ownerName || 'Shop Owner'}</span>
-        </span>
-        <button className="logout-btn" onClick={handleLogout}>
-          <i className="fas fa-sign-out-alt"></i>
-          <span className="btn-text">Logout</span>
-        </button>
-      </div>
-    </header>
-  );
+  const Header = () => {
+    const userRole = authType === 'storeman' ? 'Storeman' : 'Owner';
+
+    return (
+      <header className="top-header">
+        <div className="header-left">
+          <button
+            className="menu-toggle"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            <i className={`fas fa-${isSidebarOpen ? 'times' : 'bars'}`}></i>
+          </button>
+          <h1>StoreHub</h1>
+        </div>
+        <div className="header-right">
+          <span className="user-info">
+            <i className="fas fa-user-circle"></i>
+            <span className="user-name">{currentUser?.name} ({userRole})</span>
+          </span>
+          {storeInfo && (
+            <span className={`store-status ${storeInfo.status}`}>
+              <i className={`fas fa-${storeInfo.status === 'active' ? 'check-circle' : storeInfo.status === 'inactive' ? 'pause-circle' : 'times-circle'}`}></i>
+              {storeInfo.status.charAt(0).toUpperCase() + storeInfo.status.slice(1)}
+            </span>
+          )}
+        </div>
+      </header>
+    );
+  };
 
   // -------------------- Render --------------------
   return (
@@ -178,50 +206,69 @@ function DashboardPage() {
             <nav className="sidebar-nav">
               <button 
                 className={activePage === "dashboard" ? "active" : ""}
-                onClick={() => setActivePage("dashboard")}
+                onClick={() => setSearchParams({ tab: "dashboard" })}
               >
                 <i className="fas fa-home"></i>
                 Dashboard
               </button>
               <button 
                 className={activePage === "customers" ? "active" : ""}
-                onClick={() => setActivePage("customers")}
+                onClick={() => setSearchParams({ tab: "customers" })}
               >
                 <i className="fas fa-users"></i>
                 Customers
               </button>
               <button 
                 className={activePage === "productmanagement" ? "active" : ""}
-                onClick={() => setActivePage("productmanagement")}
+                onClick={() => setSearchParams({ tab: "productmanagement" })}
               >
                 <i className="fas fa-box-open"></i>
                 Products
               </button>
               <button 
                 className={activePage === "invoices" ? "active" : ""}
-                onClick={() => setActivePage("invoices")}
+                onClick={() => setSearchParams({ tab: "invoices" })}
               >
                 <i className="fas fa-file-invoice"></i>
                 Invoices
               </button>
               <button 
                 className={activePage === "offersadmin" ? "active" : ""}
-                onClick={() => setActivePage("offersadmin")}
+                onClick={() => setSearchParams({ tab: "offersadmin" })}
               >
                 <i className="fas fa-gift"></i>
                 Offers
               </button>
               <button 
                 className={activePage === "notifications" ? "active" : ""}
-                onClick={() => setActivePage("notifications")}
+                onClick={() => setSearchParams({ tab: "notifications" })}
               >
                 <i className="fas fa-bell"></i>
                 Notifications
               </button>
-              <button onClick={() => navigate("/shop-selector")} className="back-btn">
-                <i className="fas fa-arrow-left"></i>
-                Back to Shops
-              </button>
+              {loggedInStoreman ? (
+                <button 
+                  onClick={() => {
+                    // Clear storeman specific data
+                    localStorage.removeItem('storeman_id');
+                    localStorage.removeItem('storeman_name');
+                    localStorage.removeItem('storeman_mobile');
+                    localStorage.removeItem('auth_type');
+                    localStorage.removeItem('selectedStoreId');
+                    localStorage.removeItem('store_name');
+                    navigate('/shop-selector');
+                  }} 
+                  className="logout-btn"
+                >
+                  <i className="fas fa-sign-out-alt"></i>
+                  Logout
+                </button>
+              ) : (
+                <button onClick={() => navigate("/shop-selector")} className="back-btn">
+                  <i className="fas fa-arrow-left"></i>
+                  Back to Shops
+                </button>
+              )}
             </nav>
           )}
         </aside>

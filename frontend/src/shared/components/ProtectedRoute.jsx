@@ -6,7 +6,8 @@ export const ProtectedRoute = ({ children, userType, redirectTo }) => {
   const isAuthenticated = () => {
     switch(userType) {
       case 'shop-owner':
-        return localStorage.getItem('owner_id');
+        // Check for either owner_id or storeman_id in localStorage
+        return localStorage.getItem('owner_id') || (localStorage.getItem('storeman_id') && localStorage.getItem('auth_type') === 'storeman');
       case 'company-admin':
         return AuthService.getTempAuthData('isAdmin');
       default:

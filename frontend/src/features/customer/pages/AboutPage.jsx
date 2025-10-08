@@ -1,49 +1,135 @@
 import React from 'react';
+import { FaUsers, FaAward, FaGlobe, FaHeart, FaTruck, FaShieldAlt, FaStar } from 'react-icons/fa';
 import "@/features/customer/styles/customer-global.css";
 
 export default function AboutPage() {
+  const stats = [
+    { number: '10K+', label: 'Happy Customers', icon: <FaUsers /> },
+    { number: '500+', label: 'Products', icon: <FaAward /> },
+    { number: '50+', label: 'Countries', icon: <FaGlobe /> },
+    { number: '5+', label: 'Years Experience', icon: <FaStar /> },
+  ];
+
+  const values = [
+    {
+      icon: <FaHeart />,
+      title: 'Customer First',
+      description: 'We prioritize our customers\' needs and satisfaction above everything else.'
+    },
+    {
+      icon: <FaTruck />,
+      title: 'Fast Delivery',
+      description: 'Lightning-fast shipping ensures you get your orders when you need them.'
+    },
+    {
+      icon: <FaShieldAlt />,
+      title: 'Quality Guaranteed',
+      description: 'Every product undergoes rigorous quality checks before reaching you.'
+    }
+  ];
+
   return (
-    <div className="container">
-      <div style={{ textAlign: 'center', marginBottom: 'var(--space-5)' }}>
-        <h2>About Our Store</h2>
-        <p style={{ color: 'var(--color-text-muted)', maxWidth: '800px', margin: '0 auto' }}>
-          We are committed to providing you with the best shopping experience. Our store offers a curated selection of high-quality products, fast shipping, and exceptional customer service. Learn more about what makes us special.
-        </p>
-      </div>
-
-      <div className="card" style={{ marginBottom: 'var(--space-5)' }}>
-        <div className="card-content">
-          <h3>Our Mission</h3>
-          <p>
-            Our mission is to bring you the latest trends and timeless classics at affordable prices. We believe that style should be accessible to everyone, and we work hard to source products that are both fashionable and durable. We are passionate about quality and dedicated to ensuring every customer is satisfied with their purchase.
-          </p>
-        </div>
-      </div>
-
-      <div style={{ textAlign: 'center', marginBottom: 'var(--space-5)' }}>
-        <h2>Why Shop With Us?</h2>
-      </div>
-
-      <div className="grid grid-cols-3">
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div className="card-content">
-            <h3>Fast Delivery</h3>
-            <p>We ensure quick and reliable delivery for all your orders, right to your doorstep.</p>
+    <div className="about-page">
+      {/* Hero Section */}
+      <section className="about-hero">
+        <div className="container">
+          <div className="hero-content">
+            <div className="hero-badge">
+              <FaStar />
+              <span>Since 2019</span>
+            </div>
+            <h1 className="hero-title">
+              About <span className="gradient-text">StoreHub</span>
+            </h1>
+            <p className="hero-description">
+              We're passionate about bringing you the latest trends and timeless classics at affordable prices.
+              Our mission is to make quality fashion accessible to everyone, everywhere.
+            </p>
           </div>
         </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div className="card-content">
-            <h3>Free Shipping</h3>
-            <p>Enjoy free shipping on all products with no hidden charges or minimum purchase.</p>
+      </section>
+
+      {/* Stats Section */}
+      <section className="stats-section">
+        <div className="container">
+          <div className="stats-grid">
+            {stats.map((stat, index) => (
+              <div key={index} className="stat-card">
+                <div className="stat-icon">
+                  {stat.icon}
+                </div>
+                <div className="stat-content">
+                  <h3 className="stat-number">{stat.number}</h3>
+                  <p className="stat-label">{stat.label}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div className="card-content">
-            <h3>Best Quality</h3>
-            <p>We deliver only the highest quality products, sourced from trusted suppliers.</p>
+      </section>
+
+      {/* Story Section */}
+      <section className="story-section">
+        <div className="container">
+          <div className="story-grid">
+            <div className="story-content">
+              <h2>Our Story</h2>
+              <p className="story-text">
+                Founded in 2019, StoreHub began as a small online boutique with a simple mission:
+                to make high-quality fashion accessible to everyone. What started as a passion project
+                has grown into a trusted brand serving customers in over 50 countries.
+              </p>
+              <p className="story-text">
+                We believe that great style shouldn't break the bank. That's why we work directly
+                with manufacturers and designers to bring you premium products at fair prices,
+                without compromising on quality or ethics.
+              </p>
+            </div>
+            <div className="story-visual">
+              <div className="story-image">
+                <div className="image-placeholder">
+                  <FaAward />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Values Section */}
+      <section className="values-section">
+        <div className="container">
+          <div className="section-header">
+            <h2>Why Choose StoreHub?</h2>
+            <p>We're committed to providing an exceptional shopping experience</p>
+          </div>
+          <div className="values-grid">
+            {values.map((value, index) => (
+              <div key={index} className="value-card">
+                <div className="value-icon">
+                  {value.icon}
+                </div>
+                <h3>{value.title}</h3>
+                <p>{value.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Mission Section */}
+      <section className="mission-section">
+        <div className="container">
+          <div className="mission-content">
+            <h2>Our Mission</h2>
+            <p className="mission-text">
+              To democratize fashion by making premium quality products accessible to everyone,
+              regardless of budget or location. We believe that great style should be inclusive,
+              sustainable, and bring joy to people's lives.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

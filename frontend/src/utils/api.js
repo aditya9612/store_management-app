@@ -102,34 +102,34 @@ export const authService = {
     }
   },
   // Request OTP
-  requestOTP: async (mobile) => {
+  requestOTP: async (mobile, role = 'owner') => {
     try {
-      console.log('📱 Requesting OTP for mobile:', mobile);
+      console.log('📱 Requesting OTP for mobile:', mobile, 'role:', role);
       const response = await api.post('/auth/request-otp', {
         mobile,
-        role: 'owner' // Hardcoded as per requirement
+        role
       });
-      console.log('📬 OTP requested successfully:', response);
+      console.log('📬 OTP requested successfully for', role, ':', response);
       return response;
     } catch (error) {
-      console.error('❌ OTP request failed:', error);
+      console.error('❌ OTP request failed for', role, ':', error);
       throw new Error(error.message); // Propagate the error message from the interceptor
     }
   },
 
   // Verify OTP
-  verifyOTP: async (mobile, otp) => {
+  verifyOTP: async (mobile, otp, role = 'owner') => {
     try {
-      console.log('🔐 Verifying OTP for mobile:', mobile);
+      console.log('🔐 Verifying OTP for mobile:', mobile, 'role:', role);
       const response = await api.post('/auth/verify-otp', {
         mobile,
         otp,
-        role: 'owner' // Hardcoded as per requirement
+        role
       });
-      console.log('✅ OTP verified successfully:', response);
+      console.log('✅ OTP verified successfully for', role, ':', response);
       return response;
     } catch (error) {
-      console.error('❌ OTP verification failed:', error);
+      console.error('❌ OTP verification failed for', role, ':', error);
       throw new Error(error.message); // Propagate the error message from the interceptor
     }
   },
@@ -137,12 +137,25 @@ export const authService = {
   // Get shops for an owner
   getShops: async (ownerId) => {
     try {
-      console.log('🏪 Fetching shops for owner:', ownerId);
+      console.log('Fetching shops for owner:', ownerId);
       const response = await api.get(`/stores?owner_id=${ownerId}`);
-      console.log('📋 Shops fetched successfully:', response);
+      console.log('Shops fetched successfully:', response);
       return response;
     } catch (error) {
-      console.error('❌ Failed to fetch shops:', error);
+      console.error('Failed to fetch shops:', error);
+      throw new Error(error.message);
+    }
+  },
+
+  // Update shop status
+  updateShopStatus: async (storeId, statusData) => {
+    try {
+      console.log('Updating shop status for store:', storeId, statusData);
+      const response = await api.put(`/stores/${storeId}/status`, statusData);
+      console.log('Shop status updated successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('Failed to update shop status:', error);
       throw new Error(error.message); // Propagate the error message
     }
   },
@@ -154,7 +167,9 @@ export const authService = {
       const response = await api.post('/stores/create', {
         name: shopData.name,
         location: shopData.location,
-        owner_id: shopData.owner_id
+        owner_id: shopData.owner_id,
+        storeman_name: shopData.storeman_name,
+        storeman_mobile: shopData.storeman_mobile
       });
       console.log('✨ Shop created successfully:', response);
       return response;
