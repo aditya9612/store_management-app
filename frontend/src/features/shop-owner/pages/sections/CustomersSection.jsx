@@ -14,7 +14,7 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-  const [phone, setPhone] = useState(null);
+  const [phone, setPhone] = useState('');
 
   const fetchCustomers = useCallback(async () => {
     if (!selectedShop?.id) return;
@@ -67,7 +67,7 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
       const formData = {
         name: e.target.name.value.trim(),
         email: e.target.email.value.trim(),
-        phone: e.target.phone.value.trim(),
+        phone: phone.trim(), // Use the controlled phone state
         address: e.target.address.value.trim(),
         store_id: selectedShop.id
       };
@@ -76,6 +76,7 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
       toast.success('Customer added successfully');
       fetchCustomers();
       setShowAddForm(false);
+      setPhone(''); // Reset phone state
       e.target.reset();
     } catch (error) {
       toast.error(error.message);

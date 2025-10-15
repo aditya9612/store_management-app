@@ -16,7 +16,7 @@ function ShopOwnerLoginPage () {
     () => {
       const ownerData = localStorage.getItem ('owner_id');
       if (ownerData) {
-        navigate ('/shop-selector');
+        navigate ('/dashboard');
       }
     },
     [navigate]
@@ -60,7 +60,7 @@ function ShopOwnerLoginPage () {
       localStorage.setItem ('role', result.data.role);
 
       toast.success (result.message);
-      navigate ('/shop-selector');
+      navigate ('/dashboard');
     } catch (error) {
       toast.error (error.message, {
         position: 'top-center',

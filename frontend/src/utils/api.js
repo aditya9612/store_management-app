@@ -72,7 +72,18 @@ export const authService = {
       return response;
     } catch (error) {
       console.error('❌ Failed to fetch store details:', error);
-      throw new Error(error.message);
+
+      // Enhanced error handling to match the interceptor pattern
+      if (!error.response) {
+        if (error.message === 'Network Error' || error.code === 'ERR_INTERNET_DISCONNECTED') {
+          throw new Error('Please check your internet connection and try again');
+        }
+        throw new Error('Unable to connect to the server. Please try again later');
+      }
+
+      // Handle API errors by throwing the backend's message
+      const message = error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to fetch store details';
+      throw new Error(message);
     }
   },
 
@@ -85,7 +96,42 @@ export const authService = {
       return response;
     } catch (error) {
       console.error('❌ Failed to update shop:', error);
-      throw new Error(error.message);
+      console.error('❌ Error response:', error.response);
+
+      // Enhanced error handling for validation errors
+      if (error.response && error.response.status === 422) {
+        const detail = error.response?.data?.detail;
+        console.log('🔍 422 Error details:', error.response.data);
+        if (detail && Array.isArray(detail)) {
+          // FastAPI returns validation errors as array
+          const errorMessages = detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+          throw new Error(`Validation error: ${errorMessages}`);
+        } else if (detail) {
+          throw new Error(`Validation error: ${detail}`);
+        } else {
+          throw new Error('Invalid request format. Please check your input data.');
+        }
+      }
+
+      if (error.response && error.response.status === 404) {
+        throw new Error(`Shop with ID ${storeId} not found. Please refresh and try again.`);
+      }
+
+      if (error.response && error.response.status === 403) {
+        throw new Error('Access denied. Please check your authentication.');
+      }
+
+      // Handle network errors or no response
+      if (!error.response) {
+        if (error.message === 'Network Error' || error.code === 'ERR_INTERNET_DISCONNECTED') {
+          throw new Error('Please check your internet connection and try again');
+        }
+        throw new Error('Unable to connect to the server. Please try again later');
+      }
+
+      // Handle other API errors by throwing the backend's message
+      const message = error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to update shop';
+      throw new Error(message);
     }
   },
 
@@ -143,7 +189,18 @@ export const authService = {
       return response;
     } catch (error) {
       console.error('Failed to fetch shops:', error);
-      throw new Error(error.message);
+
+      // Enhanced error handling to match the interceptor pattern
+      if (!error.response) {
+        if (error.message === 'Network Error' || error.code === 'ERR_INTERNET_DISCONNECTED') {
+          throw new Error('Please check your internet connection and try again');
+        }
+        throw new Error('Unable to connect to the server. Please try again later');
+      }
+
+      // Handle API errors by throwing the backend's message
+      const message = error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to fetch shops';
+      throw new Error(message);
     }
   },
 
@@ -167,9 +224,7 @@ export const authService = {
       const response = await api.post('/stores/create', {
         name: shopData.name,
         location: shopData.location,
-        owner_id: shopData.owner_id,
-        storeman_name: shopData.storeman_name,
-        storeman_mobile: shopData.storeman_mobile
+        owner_id: shopData.owner_id
       });
       console.log('✨ Shop created successfully:', response);
       return response;

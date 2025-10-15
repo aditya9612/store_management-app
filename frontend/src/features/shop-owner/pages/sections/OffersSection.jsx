@@ -12,6 +12,40 @@ export default function OffersSection({ selectedShop, offers, setOffers }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
 
+  // Fetch offers when component mounts or selectedShop changes
+  useEffect(() => {
+    const fetchOffers = async () => {
+      if (!selectedShop) return;
+
+      // Prevent multiple concurrent API calls
+      if (loading) return;
+
+      // If we already have offers data, don't fetch again unless explicitly needed
+      if (offers && offers.length > 0) {
+        console.log('📦 Using existing offers data, skipping API call');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        console.log('🔄 Fetching offers for store:', selectedShop.id);
+        const response = await offersApi.listByStore(selectedShop.id);
+        const offersData = Array.isArray(response) ? response : [];
+        console.log('✅ Offers loaded:', offersData.length, 'offers');
+        setOffers(offersData);
+      } catch (error) {
+        console.error('❌ Failed to fetch offers:', error);
+        // Don't show error toast for offers loading - this prevents logout issues
+        // Don't reset offers to empty array as it might cause issues
+        // The offers will remain as they were (from localStorage or props)
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOffers();
+  }, [selectedShop, offers]);
+
   const handleCreateOffer = async (e) => {
     e.preventDefault();
     
@@ -307,7 +341,6 @@ export default function OffersSection({ selectedShop, offers, setOffers }) {
         ) : (
           <div className="offers-grid">
             {offers.map((offer) => {
-              console.log('🎁 Rendering offer:', offer);
               return (
               <div key={offer.id} className="offer-card">
                 <div className="offer-header">

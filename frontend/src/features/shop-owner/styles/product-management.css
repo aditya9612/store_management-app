@@ -1,87 +1,201 @@
 /* Product Management Section Styles */
 .product-management {
-  padding: 24px;
+  padding: 2rem;
+  background: #f8fafc;
+  min-height: 100vh;
 }
 
 .product-management h1 {
-  font-size: 1.5rem;
-  color: #102a4c;
-  margin: 0 0 16px 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 2rem 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.75rem;
 }
 
+.product-management h1 i {
+  color: #3b82f6;
+}
+
+/* Form Card */
 .form-card {
-  background: white;
-  padding: 24px;
+  background: #ffffff;
+  padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  border: 1px solid #e8e8e8;
-  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 2rem;
 }
 
 .form-card input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 2px solid #e8e8e8;
-  background: #fafafa;
-  outline: none;
-  transition: all .2s ease;
-  margin-bottom: 12px;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.9rem;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
 }
 
 .form-card input:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 4px rgba(24,144,255,0.10);
-  background: #fff;
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.form-card input::placeholder {
+  color: #9ca3af;
+}
+
+.form-card input[type="file"] {
+  padding: 0.5rem;
+  border: 1px dashed #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+}
+
+.form-card input[type="file"]:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+/* Product Grid */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
 }
 
+/* Product Card */
 .product-card {
-  background: white;
+  background: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  border: 1px solid #e8e8e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .product-image {
   width: 100%;
-  height: 180px;
+  height: 200px;
   object-fit: cover;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .placeholder {
   width: 100%;
-  height: 180px;
-  background: #f0f2f5;
+  height: 200px;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a0aec0;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .product-card h3 {
   font-size: 1.1rem;
-  color: #102a4c;
-  margin: 16px 16px 8px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 1rem 1rem 0.5rem;
 }
 
 .product-card p {
-  margin: 0 16px 16px;
-  color: #4a5568;
+  margin: 0 1rem 1rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
+/* Product Card Buttons */
 .product-card .blue,
 .product-card .red {
-  margin: 0 16px 16px;
+  margin: 0 1rem 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.product-card .blue {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.product-card .blue:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.product-card .red {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.product-card .red:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Edit Mode Styles */
+.product-card input[type="text"],
+.product-card input[type="number"] {
+  margin: 0.5rem 1rem;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: calc(100% - 2rem);
+}
+
+.product-card input[type="file"] {
+  margin: 0.5rem 1rem;
+  padding: 0.25rem;
+  border: 1px dashed #d1d5db;
+  background: #f9fafb;
+  font-size: 0.8rem;
+  width: calc(100% - 2rem);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .product-management {
+    padding: 1rem;
+  }
+
+  .product-management h1 {
+    font-size: 1.5rem;
+  }
+
+  .form-card {
+    padding: 1.5rem;
+  }
+
+  .product-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .product-card {
+    max-width: 100%;
+  }
 }

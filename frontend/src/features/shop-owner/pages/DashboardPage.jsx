@@ -16,30 +16,52 @@ function DashboardPage() {
   const navigate = useNavigate();
   const ownerIdStr = localStorage.getItem("owner_id");
   const ownerName = localStorage.getItem("owner_name");
-  const storemanId = localStorage.getItem("storeman_id");
-  const storemanName = localStorage.getItem("storeman_name");
+
   const [selectedStoreId, setSelectedStoreId] = useState(() => {
     const idStr = localStorage.getItem("selectedStoreId");
     return idStr ? parseInt(idStr) : null;
   });
 
-  // Owner and store identifiers used across effects and state
+  // Owner identifier used across effects and state
   const ownerId = ownerIdStr ? parseInt(ownerIdStr) : null;
+  const isAuthenticated = !!ownerId;
   const loggedInOwner = ownerId ? { id: ownerId, name: ownerName || 'Shop Owner' } : null;
-  const loggedInStoreman = storemanId ? { id: storemanId, name: storemanName || 'Storeman' } : null;
   const [storeInfo, setStoreInfo] = useState(null);
-  const shopKey = (ownerId || storemanId) && selectedStoreId ? `${ownerId || storemanId}_${selectedStoreId}` : null;
+  const shopKey = ownerId && selectedStoreId ? `${ownerId}_${selectedStoreId}` : null;
 
-  // Check authentication - either owner or storeman should be authenticated
-  const isAuthenticated = ownerId || storemanId;
-  const currentUser = loggedInStoreman || loggedInOwner;
-  const authType = localStorage.getItem("auth_type") || "owner";
-
+  // Check for shop suspension and auto-logout
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/owner-login");
-    }
-  }, [isAuthenticated, navigate]);
+    if (!ownerId || !selectedStoreId) return;
+
+    const checkShopSuspension = () => {
+      // Check for suspension flag in localStorage
+      const suspensionFlag = localStorage.getItem(`shop_suspended_${ownerId}`);
+      if (suspensionFlag) {
+        toast.error("⚠️ Your shop has been suspended. You are being logged out for security reasons.");
+        setTimeout(() => {
+          handleLogout();
+        }, 2000);
+        return;
+      }
+
+      // Also check current shop status periodically
+      if (storeInfo && storeInfo.status === 'suspended') {
+        toast.error("🚫 Your shop access has been suspended. Logging out...");
+        setTimeout(() => {
+          handleLogout();
+        }, 2000);
+        return;
+      }
+    };
+
+    // Check immediately
+    checkShopSuspension();
+
+    // Check every 30 seconds for status changes
+    const interval = setInterval(checkShopSuspension, 30000);
+
+    return () => clearInterval(interval);
+  }, [ownerId, selectedStoreId, storeInfo]);
 
   // -------------------- UI State --------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -61,33 +83,80 @@ function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activePage = searchParams.get('tab') || 'dashboard';
 
-  // Fetch shop data on component mount
+  // Fetch shop data on component mount or when store selection changes
   useEffect(() => {
     const fetchShopData = async () => {
       try {
         setLoading(true);
-        if (!selectedStoreId) {
-          throw new Error("No shop selected");
+
+        // If no store is selected, try to fetch owner's shops and auto-select first one
+        if (!selectedStoreId && ownerId) {
+          try {
+            console.log('🔍 No store selected, fetching owner shops for:', ownerId);
+            const shopsResponse = await authService.getShops(ownerId);
+            const shops = shopsResponse.data || [];
+
+            if (shops.length > 0) {
+              const firstShop = shops[0];
+              console.log('🏪 Auto-selecting first shop:', firstShop);
+              setSelectedStoreId(firstShop.id);
+              localStorage.setItem("selectedStoreId", firstShop.id.toString());
+              // Don't return here, continue to fetch store details
+            } else {
+              console.log('⚠️ No shops found for owner');
+              toast.warning("No shops found for this owner. Please contact your administrator.");
+              setLoading(false);
+              return;
+            }
+          } catch (shopError) {
+            console.error('❌ Error fetching shops:', shopError);
+            toast.error("Failed to load shops. Please try again.");
+            setLoading(false);
+            return;
+          }
         }
+
+        // Wait for selectedStoreId to be available (either from props or auto-selected)
+        if (!selectedStoreId) {
+          console.log('⏳ Still no store selected, waiting...');
+          setLoading(false);
+          return;
+        }
+
+        console.log('📋 Fetching store details for ID:', selectedStoreId);
         const details = await authService.getStoreDetails(selectedStoreId);
+        console.log('✅ Store details received:', details);
+
+        if (!details || !details.data) {
+          throw new Error("Invalid store details received from server");
+        }
+
         setStoreInfo(details.data);
+        console.log('💾 Store info set:', details.data);
 
         // Check store status
         if (details.data.status === 'inactive') {
           toast.warning("This store is currently inactive. Please contact your administrator.");
-          navigate("/shop-selector");
           return;
         }
 
         if (details.data.status === 'suspended') {
           toast.error("This store has been suspended. Access denied.");
-          navigate("/shop-selector");
           return;
         }
 
       } catch (error) {
-        toast.error(error.message);
-        if (error.message.includes("unauthorized") || error.message === "Selected shop not found") {
+        console.error('❌ Error in fetchShopData:', error);
+
+        // Don't show error toast for common/expected errors during shop auto-selection
+        const isAutoSelectionError = !selectedStoreId && ownerId;
+        const isNetworkError = error.message?.includes('Network Error') || error.message?.includes('connect');
+
+        if (!isAutoSelectionError && !isNetworkError) {
+          toast.error(error.message || "Failed to load shop data");
+        }
+
+        if (error.message?.includes("unauthorized") || error.message?.includes("Selected shop not found")) {
           navigate("/owner-login");
         }
       } finally {
@@ -95,10 +164,10 @@ function DashboardPage() {
       }
     };
 
-    if (isAuthenticated && selectedStoreId) {
+    if (isAuthenticated) {
       fetchShopData();
     }
-  }, [isAuthenticated, navigate, selectedStoreId]);
+  }, [isAuthenticated, navigate, ownerId]); // Removed selectedStoreId to prevent multiple runs
 
   // -------------------- Per-shop Data --------------------
   const [customers, setCustomers] = useState(() => {
@@ -134,13 +203,44 @@ function DashboardPage() {
     }
   });
 
-  // Persist per-shop data
+  // Persist per-shop data - only when data actually changes
   useEffect(() => {
     if (!shopKey) return;
-    AuthService.setTempAuthData(`offers_${shopKey}`, JSON.stringify(offers));
-    AuthService.setTempAuthData(`products_${shopKey}`, JSON.stringify(products));
-    AuthService.setTempAuthData(`invoices_${shopKey}`, JSON.stringify(invoices));
-  }, [customers, offers, products, invoices, shopKey]);
+
+    // Use a more efficient comparison to avoid unnecessary saves
+    const currentOffers = JSON.stringify(offers);
+    const currentProducts = JSON.stringify(products);
+    const currentInvoices = JSON.stringify(invoices);
+    const currentCustomers = JSON.stringify(customers);
+
+    // Only save if data has actually changed (simple check)
+    const offersKey = `offers_${shopKey}`;
+    const productsKey = `products_${shopKey}`;
+    const invoicesKey = `invoices_${shopKey}`;
+    const customersKey = `customers_${shopKey}`;
+
+    try {
+      const savedOffers = localStorage.getItem(offersKey);
+      const savedProducts = localStorage.getItem(productsKey);
+      const savedInvoices = localStorage.getItem(invoicesKey);
+      const savedCustomers = localStorage.getItem(customersKey);
+
+      if (savedOffers !== currentOffers) {
+        AuthService.setTempAuthData(offersKey, currentOffers);
+      }
+      if (savedProducts !== currentProducts) {
+        AuthService.setTempAuthData(productsKey, currentProducts);
+      }
+      if (savedInvoices !== currentInvoices) {
+        AuthService.setTempAuthData(invoicesKey, currentInvoices);
+      }
+      if (savedCustomers !== currentCustomers) {
+        AuthService.setTempAuthData(customersKey, currentCustomers);
+      }
+    } catch (error) {
+      console.error('Failed to save data to localStorage:', error);
+    }
+  }, [offers, products, invoices, customers, shopKey]);
 
   // -------------------- Handlers --------------------
   const handleLogout = () => {
@@ -160,8 +260,6 @@ function DashboardPage() {
 
   // -------------------- Header --------------------
   const Header = () => {
-    const userRole = authType === 'storeman' ? 'Storeman' : 'Owner';
-
     return (
       <header className="top-header">
         <div className="header-left">
@@ -176,7 +274,7 @@ function DashboardPage() {
         <div className="header-right">
           <span className="user-info">
             <i className="fas fa-user-circle"></i>
-            <span className="user-name">{currentUser?.name} ({userRole})</span>
+            <span className="user-name">{loggedInOwner?.name || 'Shop Owner'} (Owner)</span>
           </span>
           {storeInfo && (
             <span className={`store-status ${storeInfo.status}`}>
@@ -190,6 +288,15 @@ function DashboardPage() {
   };
 
   // -------------------- Render --------------------
+  if (!isAuthenticated) {
+    return (
+      <div className="loading-container">
+        <i className="fas fa-spinner fa-spin"></i>
+        <p>Authenticating...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-wrapper">
       <Header />
@@ -203,7 +310,19 @@ function DashboardPage() {
               <p>Loading...</p>
             </div>
           ) : (
-            <nav className="sidebar-nav">
+            <>
+              {/* Shop Header */}
+              <div className={`sidebar-shop-header ${storeInfo?.status || 'active'}`}>
+                <div className="shop-info">
+                  <h3 className="shop-name">{storeInfo?.name || 'Store'}</h3>
+                  <p className="shop-location">
+                    <i className="fas fa-map-marker-alt"></i>
+                    {storeInfo?.location || 'Location not set'}
+                  </p>
+                </div>
+              </div>
+
+              <nav className="sidebar-nav">
               <button 
                 className={activePage === "dashboard" ? "active" : ""}
                 onClick={() => setSearchParams({ tab: "dashboard" })}
@@ -246,167 +365,148 @@ function DashboardPage() {
                 <i className="fas fa-bell"></i>
                 Notifications
               </button>
-              {loggedInStoreman ? (
-                <button 
-                  onClick={() => {
-                    // Clear storeman specific data
-                    localStorage.removeItem('storeman_id');
-                    localStorage.removeItem('storeman_name');
-                    localStorage.removeItem('storeman_mobile');
-                    localStorage.removeItem('auth_type');
-                    localStorage.removeItem('selectedStoreId');
-                    localStorage.removeItem('store_name');
-                    navigate('/shop-selector');
-                  }} 
-                  className="logout-btn"
-                >
-                  <i className="fas fa-sign-out-alt"></i>
-                  Logout
-                </button>
-              ) : (
-                <button onClick={() => navigate("/shop-selector")} className="back-btn">
-                  <i className="fas fa-arrow-left"></i>
-                  Back to Shops
-                </button>
-              )}
-            </nav>
-          )}
+              <button 
+                onClick={handleLogout}
+                className="logout-btn"
+              >
+                <i className="fas fa-sign-out-alt"></i>
+                Logout
+              </button>
+              </nav>
+            </>)
+          }
         </aside>
 
         {/* Main Content */}
         <main className="main-content">
-        {loading ? (
-          <div className="content-loading">
-            <i className="fas fa-spinner fa-spin"></i>
-            <p>Loading dashboard data...</p>
-          </div>
-        ) : !selectedStoreId ? (
-          <div className="no-shop-selected">
-            <i className="fas fa-store-slash"></i>
-            <h2>No Shop Selected</h2>
-            <p>Please select a shop to view the dashboard</p>
-            <button onClick={() => navigate("/shop-selector")} className="select-shop-btn">
-              <i className="fas fa-store"></i>
-              Select a Shop
-            </button>
-          </div>
-        ) : (
-          <>
-            {activePage === "dashboard" && (
-              <div className="dashboard-content">
-                <div className="page-header">
-                  <h2>
-                    <i className="fas fa-chart-line"></i>
-                    {storeInfo ? `${storeInfo.name} — Dashboard` : "Dashboard Overview"}
-                  </h2>
-                  <p className="last-updated">
-                    <i className="fas fa-sync"></i>
-                    Last updated: {new Date().toLocaleTimeString()}
-                  </p>
+          {loading ? (
+            <div className="content-loading">
+              <i className="fas fa-spinner fa-spin"></i>
+              <p>Loading dashboard data...</p>
+            </div>
+          ) : !storeInfo ? (
+            <div className="no-shop-selected">
+              <i className="fas fa-store-slash"></i>
+              <h2>No Shop Available</h2>
+              <p>You don't have access to any shops. Please contact your administrator.</p>
+            </div>
+          ) : (
+            <>
+              {activePage === "dashboard" && (
+                <div className="dashboard-content">
+                  <div className="page-header">
+                    <h2>
+                      <i className="fas fa-chart-line"></i>
+                      {storeInfo ? `${storeInfo.name} — Dashboard` : "Dashboard Overview"}
+                    </h2>
+                    <p className="last-updated">
+                      <i className="fas fa-sync"></i>
+                      Last updated: {new Date().toLocaleTimeString()}
+                    </p>
+                  </div>
+
+                  <div className="stats-grid">
+                    <div className="stat-card customers">
+                      <i className="fas fa-users"></i>
+                      <h3>Total Customers</h3>
+                      <span className="number">{customers.length}</span>
+                      <span className="label">Registered</span>
+                    </div>
+                    <div className="stat-card offers">
+                      <i className="fas fa-gift"></i>
+                      <h3>Active Offers</h3>
+                      <span className="number">{activeOffersCount}</span>
+                      <span className="label">Running</span>
+                    </div>
+                    <div className="stat-card products">
+                      <i className="fas fa-shopping-cart"></i>
+                      <h3>Products Sold</h3>
+                      <span className="number">{productsSold}</span>
+                      <span className="label">Items</span>
+                    </div>
+                    <div className="stat-card revenue">
+                      <i className="fas fa-rupee-sign"></i>
+                      <h3>Total Revenue</h3>
+                      <span className="number">
+                        ₹{totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="label">Lifetime</span>
+                    </div>
+                  </div>
+                  {storeInfo && (
+                    <div className="store-summary">
+                      <div className="summary-card">
+                        <i className="fas fa-id-badge"></i>
+                        <div>
+                          <h4>Store ID</h4>
+                          <p>{storeInfo.id}</p>
+                        </div>
+                      </div>
+                      <div className="summary-card">
+                        <i className="fas fa-map-marker-alt"></i>
+                        <div>
+                          <h4>Location</h4>
+                          <p>{storeInfo.location}</p>
+                        </div>
+                      </div>
+                      <div className="summary-card">
+                        <i className="fas fa-user-tie"></i>
+                        <div>
+                          <h4>Owner</h4>
+                          <p>{loggedInOwner?.name || 'Shop Owner'} (ID #{storeInfo.owner_id})</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div className="stats-grid">
-                  <div className="stat-card customers">
-                    <i className="fas fa-users"></i>
-                    <h3>Total Customers</h3>
-                    <span className="number">{customers.length}</span>
-                    <span className="label">Registered</span>
-                  </div>
-                  <div className="stat-card offers">
-                    <i className="fas fa-gift"></i>
-                    <h3>Active Offers</h3>
-                    <span className="number">{activeOffersCount}</span>
-                    <span className="label">Running</span>
-                  </div>
-                  <div className="stat-card products">
-                    <i className="fas fa-shopping-cart"></i>
-                    <h3>Products Sold</h3>
-                    <span className="number">{productsSold}</span>
-                    <span className="label">Items</span>
-                  </div>
-                  <div className="stat-card revenue">
-                    <i className="fas fa-rupee-sign"></i>
-                    <h3>Total Revenue</h3>
-                    <span className="number">
-                      ₹{totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-                    </span>
-                    <span className="label">Lifetime</span>
-                  </div>
-                </div>
-                {storeInfo && (
-                  <div className="store-summary">
-                    <div className="summary-card">
-                      <i className="fas fa-id-badge"></i>
-                      <div>
-                        <h4>Store ID</h4>
-                        <p>{storeInfo.id}</p>
-                      </div>
-                    </div>
-                    <div className="summary-card">
-                      <i className="fas fa-map-marker-alt"></i>
-                      <div>
-                        <h4>Location</h4>
-                        <p>{storeInfo.location}</p>
-                      </div>
-                    </div>
-                    <div className="summary-card">
-                      <i className="fas fa-user-tie"></i>
-                      <div>
-                        <h4>Owner</h4>
-                        <p>ID #{storeInfo.owner_id}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              {activePage === "customers" && (
+                <CustomersSection
+                  loggedInOwner={loggedInOwner}
+                  selectedShop={{ id: selectedStoreId }}
+                  customers={customers}
+                  setCustomers={setCustomers}
+                />
+              )}
 
-            {activePage === "customers" && (
-              <CustomersSection
-                loggedInOwner={loggedInOwner}
-                selectedShop={{ id: selectedStoreId }}
-                customers={customers}
-                setCustomers={setCustomers}
-              />
-            )}
+              {activePage === "productmanagement" && (
+                <ProductManagementSection
+                  loggedInOwner={loggedInOwner}
+                  products={products}
+                  setProducts={setProducts}
+                />
+              )}
 
-            {activePage === "productmanagement" && (
-              <ProductManagementSection
-                loggedInOwner={loggedInOwner}
-                products={products}
-                setProducts={setProducts}
-              />
-            )}
+              {activePage === "invoices" && (
+                <InvoicesSection
+                  invoices={invoices}
+                  setInvoices={setInvoices}
+                  customers={customers}
+                  setCustomers={setCustomers}
+                  loggedInOwner={loggedInOwner}
+                  selectedShop={{ id: selectedStoreId }}
+                />
+              )}
 
-            {activePage === "invoices" && (
-              <InvoicesSection
-                invoices={invoices}
-                setInvoices={setInvoices}
-                customers={customers}
-                setCustomers={setCustomers}
-                loggedInOwner={loggedInOwner}
-                selectedShop={{ id: selectedStoreId }}
-              />
-            )}
+              {activePage === "offersadmin" && (
+                <OffersSection
+                  selectedShop={{ id: selectedStoreId }}
+                  offers={offers}
+                  setOffers={setOffers}
+                />
+              )}
 
-            {activePage === "offersadmin" && (
-              <OffersSection
-                selectedShop={{ id: selectedStoreId }}
-                offers={offers}
-                setOffers={setOffers}
-              />
-            )}
-
-            {activePage === "notifications" && (
-              <NotificationsSection
-                offers={offers}
-                customers={customers}
-                loggedInOwner={loggedInOwner}
-                selectedShop={{ id: selectedStoreId }}
-              />
-            )}
-          </>
-        )}
+              {activePage === "notifications" && (
+                <NotificationsSection
+                  offers={offers}
+                  customers={customers}
+                  loggedInOwner={loggedInOwner}
+                  selectedShop={{ id: selectedStoreId }}
+                />
+              )}
+            </>
+          )}
         </main>
       </div>
 

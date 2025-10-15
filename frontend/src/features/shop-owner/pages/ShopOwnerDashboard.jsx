@@ -19,8 +19,9 @@ function ShopSelectorPage() {
   const [shopFormData, setShopFormData] = useState({ 
     name: '', 
     location: '',
-    storeman_name: '',
-    storeman_mobile: ''
+    owner_name: '',
+    owner_mobile: '',
+    email: ''
   });
   const [otpModal, setOtpModal] = useState({
     isOpen: false,
@@ -55,6 +56,46 @@ function ShopSelectorPage() {
 
     setResendCooldown(30); // 30 second cooldown
     await handleOtpRequest();
+  };
+
+  // State for navigation loading and errors
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navigationError, setNavigationError] = useState(null);
+
+  // Function to handle dashboard redirection
+  const handleDashboardClick = async (shopId) => {
+    if (!shopId) {
+      toast.error("Invalid shop selection");
+      return;
+    }
+
+    setIsNavigating(true);
+    setNavigationError(null);
+
+    try {
+      // Verify shop status before navigation
+      const shop = shops.find(s => s.id === shopId);
+      
+      if (!shop) {
+        throw new Error('Shop not found');
+      }
+
+      if (shop.status !== 'active') {
+        throw new Error('This shop is not currently active');
+      }
+
+      // Add a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Navigate to the shop-specific dashboard
+      navigate(`/shop-dashboard/${shopId}`);
+    } catch (error) {
+      console.error('Error navigating to dashboard:', error);
+      setNavigationError(error.message);
+      toast.error(`Failed to open dashboard: ${error.message}`);
+    } finally {
+      setIsNavigating(false);
+    }
   };
 
   useEffect(() => {
@@ -286,33 +327,34 @@ function ShopSelectorPage() {
       name: e.target.name.value,
       location: e.target.address.value,
       owner_id: parseInt(owner_id),
-      storeman_name: e.target.storeman_name.value,
-      storeman_mobile: e.target.storeman_mobile.value
+      owner_name: e.target.owner_name.value,
+      owner_mobile: e.target.owner_mobile.value,
+      email: e.target.email.value
     };
 
     // Basic validation
-    if (!formData.name || !formData.location || !formData.storeman_name || !formData.storeman_mobile) {
+    if (!formData.name || !formData.location || !formData.owner_name || !formData.owner_mobile) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    // Mobile number validation
+    // Mobile number validation for owner
     const mobileRegex = /^[6-9]\d{9}$/;
-    if (!mobileRegex.test(formData.storeman_mobile)) {
-      toast.error("Please enter a valid 10-digit mobile number");
+    if (!mobileRegex.test(formData.owner_mobile)) {
+      toast.error("Please enter a valid 10-digit owner mobile number");
       return;
     }
 
     setIsSubmitting(true);
     try {
       const response = await authService.createShop(formData);
-      toast.success("Shop added successfully!");
+      toast.success("Outlet added successfully!");
       fetchShops();
       setIsAddShopModalOpen(false);
       e.target.reset();
     } catch (error) {
-      console.error("Failed to create shop:", error);
-      toast.error(error.message || "Failed to add shop. Please try again.");
+      console.error("Failed to create outlet:", error);
+      toast.error(error.message || "Failed to add outlet. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -323,8 +365,9 @@ function ShopSelectorPage() {
     setShopFormData({
       name: shop.name,
       location: shop.location || '',
-      storeman_name: shop.storeman?.name || '',
-      storeman_mobile: shop.storeman?.mobile || ''
+      owner_name: shop.owner_name || '',
+      owner_mobile: shop.owner_mobile || '',
+      email: shop.email || ''
     });
   };
 
@@ -333,8 +376,9 @@ function ShopSelectorPage() {
     setShopFormData({ 
       name: '', 
       location: '',
-      storeman_name: '',
-      storeman_mobile: ''
+      owner_name: '',
+      owner_mobile: '',
+      email: ''
     });
   };
 
@@ -343,11 +387,7 @@ function ShopSelectorPage() {
     try {
       const response = await authService.updateShop(shopId, {
         ...shopFormData,
-        owner_id: parseInt(owner_id),
-        storeman: {
-          name: shopFormData.storeman_name,
-          mobile: shopFormData.storeman_mobile
-        }
+        owner_id: parseInt(owner_id)
       });
       toast.success(response.message);
       setEditingShop(null);
@@ -375,33 +415,6 @@ function ShopSelectorPage() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    // Validation for storeman_name (only alphabets and spaces)
-    if (name === 'storeman_name') {
-      // Only allow alphabets and spaces
-      const regex = /^[A-Za-z\s]*$/;
-      if (value === '' || regex.test(value)) {
-        setShopFormData(prev => ({
-          ...prev,
-          [name]: value
-        }));
-      }
-      return;
-    }
-    
-    // Validation for storeman_mobile (only numbers, max 10 digits)
-    if (name === 'storeman_mobile') {
-      // Only allow numbers and limit to 10 digits
-      const regex = /^\d{0,10}$/;
-      if (regex.test(value)) {
-        setShopFormData(prev => ({
-          ...prev,
-          [name]: value
-        }));
-      }
-      return;
-    }
-    
-    // For all other fields
     setShopFormData(prev => ({
       ...prev,
       [name]: value
@@ -454,6 +467,26 @@ function ShopSelectorPage() {
         <aside className={`sidebar ${!isSidebarOpen ? 'hidden' : ''}`}>
           <nav className="sidebar-nav">
             <button 
+              className={activePage === "dashboard" ? "active" : ""}
+              onClick={() => {
+                // Set the first available shop as selected for dashboard access
+                if (shops.length > 0) {
+                  const firstShop = shops[0];
+                  const selectedStoreId = String(firstShop.id);
+                  localStorage.setItem("selectedStoreId", selectedStoreId);
+                  localStorage.setItem("store_name", firstShop.name);
+                  navigate('/dashboard');
+                  // Automatically set selectedStoreId for shop owner's access
+                  setSelectedStoreId(selectedStoreId);
+                } else {
+                  toast.info("Please create a shop first to access the dashboard");
+                }
+              }}
+            >
+              <i className="fas fa-tachometer-alt"></i>
+              <span>Dashboard</span>
+            </button>
+            <button 
               className={activePage === "shops" ? "active" : ""}
               onClick={() => handleNavClick("shops")}
             >
@@ -465,28 +498,7 @@ function ShopSelectorPage() {
               onClick={() => handleNavClick("add-shop")}
             >
               <i className="fas fa-plus-circle"></i>
-              <span>Add Shop</span>
-            </button>
-            <button 
-              className={activePage === "revenue" ? "active" : ""}
-              onClick={() => handleNavClick("revenue")}
-            >
-              <i className="fas fa-chart-line"></i>
-              <span>Revenue</span>
-            </button>
-            <button 
-              className={activePage === "sales" ? "active" : ""}
-              onClick={() => handleNavClick("sales")}
-            >
-              <i className="fas fa-shopping-cart"></i>
-              <span>Sales</span>
-            </button>
-            <button 
-              className={activePage === "inventory" ? "active" : ""}
-              onClick={() => handleNavClick("inventory")}
-            >
-              <i className="fas fa-boxes"></i>
-              <span>Inventory</span>
+              <span>New Outlet</span>
             </button>
             {isCompanyAdmin && (
               <button
@@ -502,30 +514,6 @@ function ShopSelectorPage() {
 
         {/* Main Content */}
         <main className="main-content">
-          {/* Horizontal Welcome Section - Above Header Level */}
-          <div className="welcome-section-horizontal">
-            <div className="welcome-content">
-              <div className="welcome-left">
-                <h1>Welcome back, {ownerName}</h1>
-                <p>Manage your shops and track your business performance with our advanced dashboard system</p>
-              </div>
-              <div className="welcome-right">
-                <div className="stat-card">
-                  <span className="stat-number">{shops.length}</span>
-                  <span className="stat-label">Total Shops</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-number">--</span>
-                  <span className="stat-label">Active Today</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-number">--</span>
-                  <span className="stat-label">This Month</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {activePage === "shops" && (
             <div className="shops-container">
               <div className="shops-section">
@@ -599,10 +587,10 @@ function ShopSelectorPage() {
                 <div className="empty-state">
                   <i className="fas fa-store-alt-slash"></i>
                   <h3>No Shops Found</h3>
-                  <p>Start by adding your first shop!</p>
+                  <p>Contact your administrator to assign shops to your account.</p>
                   <button onClick={() => handleNavClick("add-shop")}>
                     <i className="fas fa-plus"></i>
-                    Add New Shop
+                    Add New Outlet
                   </button>
                 </div>
               ) : (
@@ -629,20 +617,28 @@ function ShopSelectorPage() {
                           />
                           <input
                             type="text"
-                            name="storeman_name"
-                            value={shopFormData.storeman_name}
+                            name="owner_name"
+                            value={shopFormData.owner_name}
                             onChange={handleInputChange}
                             className="form-input"
-                            placeholder="Storeman Name"
+                            placeholder="Owner Name"
                           />
                           <input
                             type="text"
-                            name="storeman_mobile"
-                            value={shopFormData.storeman_mobile}
+                            name="owner_mobile"
+                            value={shopFormData.owner_mobile}
                             onChange={handleInputChange}
                             className="form-input"
-                            placeholder="Storeman Mobile Number"
+                            placeholder="Owner Mobile Number"
                             maxLength="10"
+                          />
+                          <input
+                            type="email"
+                            name="email"
+                            value={shopFormData.email}
+                            onChange={handleInputChange}
+                            className="form-input"
+                            placeholder="Email (Optional)"
                           />
                           <div className="form-actions">
                             <button 
@@ -683,36 +679,47 @@ function ShopSelectorPage() {
                             )}
                             <div className="shop-actions">
                               <button 
+                                className={`btn-dashboard ${isNavigating ? 'btn-loading' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isNavigating) {
+                                    handleDashboardClick(shop.id);
+                                  }
+                                }}
+                                disabled={isNavigating}
+                                title={isNavigating ? 'Opening dashboard...' : 'Open Shop Dashboard'}
+                              >
+                                {isNavigating ? (
+                                  <span className="loading-spinner"></span>
+                                ) : (
+                                  <i className="fas fa-tachometer-alt"></i>
+                                )}
+                              </button>
+                              <button 
                                 className="btn-edit"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleEditShop(shop);
                                 }}
                                 title="Edit shop"
+                                disabled={isNavigating}
                               >
                                 <FaEdit />
                               </button>
                               <button 
                                 className="btn-delete"
-                                onClick={(e) => handleDeleteShop(shop.id, e)}
+                                onClick={(e) => !isNavigating && handleDeleteShop(shop.id, e)}
                                 title="Delete shop"
+                                disabled={isNavigating}
                               >
                                 <FaTrash />
                               </button>
-                              {/* {shop.storeman && (
-                                <button
-                                  className="btn-storeman-login"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log("🔑 Storeman login requested for shop:", shop.name);
-                                    handleSelectShop(shop); // Will trigger storeman login (default behavior)
-                                  }}
-                                  title="Login as storeman for additional features"
-                                >
-                                  <i className="fas fa-user-tie"></i>
-                                </button>
-                              )} */}
                             </div>
+                            {navigationError && (
+                              <div className="error-message">
+                                {navigationError}
+                              </div>
+                            )}
                             <button
                               className="view-dashboard"
                               onClick={(e) => {
@@ -770,19 +777,19 @@ function ShopSelectorPage() {
             <div className="add-shop-form">
               <h2>
                 <i className="fas fa-plus-circle"></i>
-                Add New Shop
+                Add New Outlet
               </h2>
-              <p className="form-description">All shops require a storeman for access management.</p>
+              <p className="form-description">Create a new outlet/location within your shop for better management.</p>
               <form onSubmit={handleAddShop}>
                 <div className="form-group">
                   <label>
                     <i className="fas fa-store"></i>
-                    Shop Name<span className="required">*</span>
+                    Outlet Name<span className="required">*</span>
                   </label>
                   <input 
                     name="name" 
                     type="text" 
-                    placeholder="Enter shop name"
+                    placeholder="Enter outlet name"
                     required 
                   />
                 </div>
@@ -795,52 +802,59 @@ function ShopSelectorPage() {
                   <input 
                     name="address" 
                     type="text" 
-                    placeholder="Enter shop location"
+                    placeholder="Enter outlet location"
                     required 
                   />
                 </div>
-
                 <div className="form-group">
                   <label>
-                    <i className="fas fa-user-tie"></i>
-                    Storeman Name <span className="required">*</span>
+                    <i className="fas fa-user"></i>
+                    Owner Name <span className="required">*</span>
                   </label>
                   <input
-                    name="storeman_name"
+                    name="owner_name"
                     type="text"
-                    placeholder="Enter storeman name"
+                    placeholder="Enter owner name"
                     required
                     minLength="3"
                     maxLength="50"
                     pattern="^[A-Za-z\s]{3,50}$"
                     title="Please enter a valid name (only alphabets and spaces, 3-50 characters)"
-                    value={shopFormData.storeman_name}
-                    onChange={handleInputChange}
                   />
                 </div>
 
                 <div className="form-group">
                   <label>
                     <i className="fas fa-mobile-alt"></i>
-                    Storeman Mobile <span className="required">*</span>
+                    Owner Mobile Number <span className="required">*</span>
                   </label>
                   <input
-                    name="storeman_mobile"
+                    name="owner_mobile"
                     type="tel"
-                    placeholder="Enter storeman mobile number"
+                    placeholder="Enter owner mobile number"
                     required
                     minLength="10"
                     maxLength="10"
                     pattern="^[6-9]\d{9}$"
                     title="Please enter a valid 10-digit mobile number"
-                    value={shopFormData.storeman_mobile}
-                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    <i className="fas fa-envelope"></i>
+                    Email (Optional)
+                  </label>
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="Enter email address"
                   />
                 </div>
 
                 <div className="form-actions">
                   <button type="submit" className="submit-btn">
-                    Create Shop
+                    Create Outlet
                   </button>
                   <button 
                     type="button" 
