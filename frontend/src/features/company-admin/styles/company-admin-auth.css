@@ -1,0 +1,101 @@
+/* Company Admin authentication styles (mirrors Shop Owner auth with admin branding) */
+.admin-auth-page {
+  display: flex;
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+/* Left section - Content */
+.admin-auth-content {
+  flex: 1;
+  padding: 60px;
+  background: #1f2937; /* darker slate */
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.admin-auth-content h1 {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+
+.admin-auth-content .lead {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  opacity: 0.9;
+}
+
+.admin-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.admin-feature-item {
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: transform 0.3s ease;
+}
+
+.admin-feature-item:hover { transform: translateY(-4px); }
+
+.admin-feature-item i { font-size: 1.8rem; margin-bottom: 0.75rem; color: #60a5fa; }
+.admin-feature-item h3 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+.admin-feature-item p { opacity: 0.85; font-size: 0.9rem; }
+
+/* Right section - Form */
+.admin-auth-form {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: white;
+}
+
+.admin-form-container { width: 100%; max-width: 420px; padding: 2rem; }
+
+.admin-form-header { text-align: center; margin-bottom: 1.5rem; }
+.admin-form-header h2 { color: #111827; font-size: 1.75rem; margin-bottom: 0.5rem; }
+.admin-form-header p { color: #6b7280; }
+
+.admin-input-group { margin-bottom: 1rem; }
+.admin-input-group label { display: block; margin-bottom: 0.5rem; color: #374151; font-weight: 600; }
+.admin-input-with-icon { display: flex; align-items: center; border: 1px solid #e5e7eb; border-radius: 10px; background: #fafafa; padding: 0 0.75rem; }
+.admin-input-with-icon i { color: #6b7280; margin-right: 0.5rem; }
+.admin-input-with-icon input { flex: 1; padding: 0.75rem; border: none; background: transparent; outline: none; border-radius: 10px; }
+
+.admin-login-button {
+  width: 100%;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  border: none;
+  padding: 0.9rem 1.25rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all .2s ease;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+.admin-login-button:hover { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 6px 18px rgba(37,99,235,0.25); transform: translateY(-1px); }
+.admin-login-button:disabled { opacity: .75; cursor: not-allowed; }
+
+.admin-error-message { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; }
+
+.admin-footer { text-align: center; margin-top: 1rem; color: #6b7280; font-size: .9rem; }
+
+/* Responsive */
+@media (max-width: 992px) {
+  .admin-auth-page { flex-direction: column; }
+  .admin-auth-content { padding: 2rem; }
+  .admin-features { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 576px) {
+  .admin-form-container { padding: 1rem; }
+  .admin-auth-content h1 { font-size: 2.2rem; }
+}

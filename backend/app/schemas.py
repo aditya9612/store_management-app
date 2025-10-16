@@ -58,8 +58,6 @@ class StoreBase(BaseModel):
 
 class StoreCreate(StoreBase):
     owner_id: int
-    storeman_name: str
-    storeman_mobile: str
 
 class Store(StoreBase):
     id: int
@@ -171,6 +169,7 @@ class OrderOut(OrderBase):
     status: str
     created_at: datetime
     items: List[OrderItemOut]
+    customer: Optional[CustomerOut] = None  # Include customer details
 
     class Config:
         from_attributes = True

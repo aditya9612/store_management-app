@@ -94,14 +94,6 @@ def create_store(db: Session, store: schemas.StoreCreate):
     db.commit()
     db.refresh(db_store)
 
-    # Create storeman (now required for all shops)
-    storeman_data = schemas.StoreManCreate(
-        name=store.storeman_name,
-        mobile=store.storeman_mobile,
-        store_id=db_store.id
-    )
-    create_storeman(db, storeman_data)
-
     return db_store
 
 
@@ -116,20 +108,6 @@ def update_store(db: Session, store_id: int, store: schemas.StoreCreate):
         db_store.name = store.name
         db_store.location = store.location
         db_store.owner_id = store.owner_id
-
-        # Update storeman information
-        existing_storeman = db.query(models.StoreMan).filter(models.StoreMan.store_id == store_id).first()
-        if existing_storeman:
-            existing_storeman.name = store.storeman_name
-            existing_storeman.mobile = store.storeman_mobile
-        else:
-            # Create new storeman if one doesn't exist
-            storeman_data = schemas.StoreManCreate(
-                name=store.storeman_name,
-                mobile=store.storeman_mobile,
-                store_id=store_id
-            )
-            create_storeman(db, storeman_data)
 
         db.commit()
         db.refresh(db_store)
@@ -154,9 +132,6 @@ def delete_store(db: Session, store_id: int):
 
         # Delete all offers for this store
         db.query(models.Offer).filter(models.Offer.store_id == store_id).delete(synchronize_session=False)
-
-        # Delete storeman for this store
-        delete_storeman(db, store_id)
 
         # Then delete the store (this will cascade delete storeman, etc.)
         db.delete(db_store)
