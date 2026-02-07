@@ -44,7 +44,7 @@ export default function OffersSection({ selectedShop, offers, setOffers }) {
     };
 
     fetchOffers();
-  }, [selectedShop, offers]);
+  }, [selectedShop]);
 
   const handleCreateOffer = async (e) => {
     e.preventDefault();
@@ -312,13 +312,21 @@ export default function OffersSection({ selectedShop, offers, setOffers }) {
       {showDeleteConfirm && (
         <div className="modal-overlay">
           <div className="confirmation-modal">
-            <h3>Confirm Deletion</h3>
-            <p>Are you sure you want to delete this offer?</p>
+            <div className="confirmation-header">
+              <i className="fas fa-exclamation-triangle warning-icon"></i>
+              <h3>Delete Offer</h3>
+            </div>
+            <div className="confirmation-body">
+              <p>Are you sure you want to delete the offer <strong>"{offers.find(o => o.id === showDeleteConfirm)?.title}"</strong>?</p>
+              <p className="warning-text">This action cannot be undone and will permanently remove the offer from your store.</p>
+            </div>
             <div className="form-actions">
-              <button className="submit-btn" onClick={() => handleDeleteOffer(showDeleteConfirm)}>
-                Confirm
+              <button className="submit-btn delete-confirm" onClick={() => handleDeleteOffer(showDeleteConfirm)}>
+                <i className="fas fa-trash"></i>
+                Yes, Delete
               </button>
               <button className="cancel-btn" onClick={() => setShowDeleteConfirm(null)}>
+                <i className="fas fa-times"></i>
                 Cancel
               </button>
             </div>

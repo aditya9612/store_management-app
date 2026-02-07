@@ -160,8 +160,20 @@ export default function ContactPage() {
                         id="phone"
                         name="phone"
                         value={formData.phone}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                          // 🚫 BLOCK: Prevent input if first digit is 1-5
+                          if (value.length > 0 && /^[1-5]/.test(value.charAt(0))) {
+                            return; // Don't update state if first digit is invalid
+                          }
+                          if (value.length <= 10) {
+                            setFormData({ ...formData, phone: value });
+                          }
+                        }}
+                        pattern="[6-9][0-9]{9}"
+                        maxLength="10"
                         placeholder="Enter your phone number"
+                        title="Phone number must start with 6-9 (e.g., 9876543210)"
                       />
                     </div>
                     <div className="form-group">

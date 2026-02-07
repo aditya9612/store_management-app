@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import "@/features/shop-owner/styles/shop-owner-dashboard.css";
 import { AuthService } from "@utils/auth";
+import { offersApi } from "@/utils/api";
 import { authService } from "@/utils/api";
 
 // Import sub-components
@@ -27,6 +28,10 @@ function DashboardPage() {
   const isAuthenticated = !!ownerId;
   const loggedInOwner = ownerId ? { id: ownerId, name: ownerName || 'Shop Owner' } : null;
   const [storeInfo, setStoreInfo] = useState(null);
+  // Memoize selectedShop to prevent recreation on every render
+  const selectedShop = useMemo(() => {
+    return selectedStoreId ? { id: selectedStoreId } : null;
+  }, [selectedStoreId]);
   const shopKey = ownerId && selectedStoreId ? `${ownerId}_${selectedStoreId}` : null;
 
   // Check for shop suspension and auto-logout
@@ -62,6 +67,11 @@ function DashboardPage() {
 
     return () => clearInterval(interval);
   }, [ownerId, selectedStoreId, storeInfo]);
+
+  // -------------------- Navigation --------------------
+  const handleBackToShops = () => {
+    navigate('/shop-selector');
+  };
 
   // -------------------- UI State --------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -254,9 +264,53 @@ function DashboardPage() {
   };
 
   // -------------------- Dashboard Stats --------------------
-  const activeOffersCount = offers.filter(o => new Date(o.valid_until) > new Date()).length;
-  const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-  const productsSold = invoices.reduce((sum, inv) => sum + (inv.items?.length || 0), 0);
+  // Fetch offers when component mounts or when selectedShop changes
+  useEffect(() => {
+    const fetchOffers = async () => {
+      if (!selectedShop?.id) return;
+      
+      try {
+        console.log('🔄 Fetching offers for shop:', selectedShop.id);
+        const response = await offersApi.listByStore(selectedShop.id);
+        const offersData = Array.isArray(response) ? response : [];
+        console.log('✅ Offers loaded:', offersData);
+        setOffers(offersData);
+      } catch (error) {
+        console.error('❌ Failed to fetch offers:', error);
+        // Initialize with empty array to prevent errors
+        setOffers([]);
+      }
+    };
+
+    fetchOffers();
+  }, [selectedShop]);
+
+  // Calculate active offers count safely
+  const activeOffersCount = useMemo(() => {
+    try {
+      return offers.filter(offer => {
+        try {
+          return offer && offer.valid_until && new Date(offer.valid_until) > new Date();
+        } catch (e) {
+          console.error('Invalid offer date format:', offer);
+          return false;
+        }
+      }).length;
+    } catch (e) {
+      console.error('Error calculating active offers:', e);
+      return 0;
+    }
+  }, [offers]);
+  
+  const totalRevenue = useMemo(() => 
+    invoices.reduce((sum, inv) => sum + (parseFloat(inv?.total) || 0), 0), 
+    [invoices]
+  );
+  
+  const productsSold = useMemo(() => 
+    invoices.reduce((sum, inv) => sum + (Array.isArray(inv?.items) ? inv.items.length : 0), 0),
+    [invoices]
+  );
 
   // -------------------- Header --------------------
   const Header = () => {
@@ -277,105 +331,109 @@ function DashboardPage() {
             <span className="user-name">{loggedInOwner?.name || 'Shop Owner'} (Owner)</span>
           </span>
           {storeInfo && (
-            <span className={`store-status ${storeInfo.status}`}>
-              <i className={`fas fa-${storeInfo.status === 'active' ? 'check-circle' : storeInfo.status === 'inactive' ? 'pause-circle' : 'times-circle'}`}></i>
-              {storeInfo.status.charAt(0).toUpperCase() + storeInfo.status.slice(1)}
-            </span>
+            <button 
+              onClick={handleBackToShops}
+              className="btn btn-outline-secondary btn-sm me-2"
+              title="Back to Shops"
+            >
+              <i className="fas fa-arrow-left me-1"></i>
+              Back to Shops
+            </button>
           )}
         </div>
       </header>
     );
   };
 
-  // -------------------- Render --------------------
-  if (!isAuthenticated) {
-    return (
-      <div className="loading-container">
-        <i className="fas fa-spinner fa-spin"></i>
-        <p>Authenticating...</p>
-      </div>
-    );
-  }
+// -------------------- Render --------------------
+if (!isAuthenticated) {
+return (
+  <div className="loading-container">
+    <i className="fas fa-spinner fa-spin"></i>
+    <p>Authenticating...</p>
+  </div>
+);
+}
 
-  return (
-    <div className="dashboard-wrapper">
-      <Header />
+return (
+  <div className="dashboard-wrapper">
+    <Header />
 
-      <div className="main-container">
-        {/* Sidebar */}
-        <aside className={`sidebar ${!isSidebarOpen ? 'hidden' : ''} ${loading ? 'loading' : ''}`}>
-          {loading ? (
-            <div className="sidebar-loading">
-              <i className="fas fa-spinner fa-spin"></i>
-              <p>Loading...</p>
-            </div>
-          ) : (
-            <>
-              {/* Shop Header */}
-              <div className={`sidebar-shop-header ${storeInfo?.status || 'active'}`}>
-                <div className="shop-info">
-                  <h3 className="shop-name">{storeInfo?.name || 'Store'}</h3>
-                  <p className="shop-location">
-                    <i className="fas fa-map-marker-alt"></i>
-                    {storeInfo?.location || 'Location not set'}
-                  </p>
-                </div>
+    <div className="main-container">
+      {/* Sidebar */}
+      <aside className={`sidebar ${!isSidebarOpen ? 'hidden' : ''} ${loading ? 'loading' : ''}`}>
+        {loading ? (
+          <div className="sidebar-loading">
+            <i className="fas fa-spinner fa-spin"></i>
+            <p>Loading...</p>
+          </div>
+        ) : (
+          <>
+            {/* Store Information Card */}
+            <div className="store-info">
+              <div className="store-icon">
+                <i className="fas fa-store"></i>
               </div>
+              <div className="store-details">
+                <h3 className="store-name">{storeInfo.name || 'My Store'}</h3>
+              </div>
+            </div>
 
-              <nav className="sidebar-nav">
-              <button 
+            {/* Navigation Menu */}
+            <nav className="sidebar-nav">
+              <button
                 className={activePage === "dashboard" ? "active" : ""}
                 onClick={() => setSearchParams({ tab: "dashboard" })}
               >
                 <i className="fas fa-home"></i>
                 Dashboard
               </button>
-              <button 
+              <button
                 className={activePage === "customers" ? "active" : ""}
                 onClick={() => setSearchParams({ tab: "customers" })}
               >
                 <i className="fas fa-users"></i>
                 Customers
               </button>
-              <button 
+              <button
                 className={activePage === "productmanagement" ? "active" : ""}
                 onClick={() => setSearchParams({ tab: "productmanagement" })}
               >
                 <i className="fas fa-box-open"></i>
                 Products
               </button>
-              <button 
+              <button
                 className={activePage === "invoices" ? "active" : ""}
                 onClick={() => setSearchParams({ tab: "invoices" })}
               >
                 <i className="fas fa-file-invoice"></i>
                 Invoices
               </button>
-              <button 
+              <button
                 className={activePage === "offersadmin" ? "active" : ""}
                 onClick={() => setSearchParams({ tab: "offersadmin" })}
               >
                 <i className="fas fa-gift"></i>
                 Offers
               </button>
-              <button 
+              <button
                 className={activePage === "notifications" ? "active" : ""}
                 onClick={() => setSearchParams({ tab: "notifications" })}
               >
                 <i className="fas fa-bell"></i>
                 Notifications
               </button>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="logout-btn"
               >
                 <i className="fas fa-sign-out-alt"></i>
                 Logout
               </button>
-              </nav>
-            </>)
-          }
-        </aside>
+            </nav>
+          </>
+        )}
+      </aside>
 
         {/* Main Content */}
         <main className="main-content">
@@ -445,8 +503,8 @@ function DashboardPage() {
                       <div className="summary-card">
                         <i className="fas fa-map-marker-alt"></i>
                         <div>
-                          <h4>Location</h4>
-                          <p>{storeInfo.location}</p>
+                          <h4>Address</h4>
+                          <p>{storeInfo.address || 'No address provided'}</p>
                         </div>
                       </div>
                       <div className="summary-card">
@@ -464,7 +522,7 @@ function DashboardPage() {
               {activePage === "customers" && (
                 <CustomersSection
                   loggedInOwner={loggedInOwner}
-                  selectedShop={{ id: selectedStoreId }}
+                  selectedShop={selectedShop}
                   customers={customers}
                   setCustomers={setCustomers}
                 />
@@ -485,13 +543,13 @@ function DashboardPage() {
                   customers={customers}
                   setCustomers={setCustomers}
                   loggedInOwner={loggedInOwner}
-                  selectedShop={{ id: selectedStoreId }}
+                  selectedShop={storeInfo}
                 />
               )}
 
               {activePage === "offersadmin" && (
                 <OffersSection
-                  selectedShop={{ id: selectedStoreId }}
+                  selectedShop={selectedShop}
                   offers={offers}
                   setOffers={setOffers}
                 />
@@ -502,7 +560,7 @@ function DashboardPage() {
                   offers={offers}
                   customers={customers}
                   loggedInOwner={loggedInOwner}
-                  selectedShop={{ id: selectedStoreId }}
+                  selectedShop={selectedShop}
                 />
               )}
             </>

@@ -1,0 +1,7 @@
+- [ ] Add CORS middleware to the backend application.
+- [ ] Create a `requirements.txt` file to list the dependencies of the project.
+- [ ] Install the dependencies and run the application.
+- [ ] Check the frontend code to see if there are any issues with the API requests.
+- [ ] If there are any issues, fix them.
+- [ ] Run the frontend application and check if the issue is resolved.
+- [ ] If the issue is resolved, remove the `TODO.md` file and the `requirements.txt` file.

@@ -1,0 +1,393 @@
+{
+  "info": {
+    "_postman_id": "store-management-api-collection",
+    "name": "Store Management API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "API collection for Store Management System (FastAPI backend). Manages owners, stores, store managers, customers, orders, products, inquiries, and offers."
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Request OTP",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mobile\": \"9876543210\", \"role\": \"owner\"}"
+            },
+            "url": {"raw": "http://localhost:8000/auth/request-otp", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["auth", "request-otp"]}
+          },
+          "response": [{"status": "OK", "code": 200, "body": "{\"message\": \"OTP sent successfully.\"}"}]
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mobile\": \"9876543210\", \"otp\": \"123456\", \"role\": \"owner\"}"
+            },
+            "url": {"raw": "http://localhost:8000/auth/verify-otp", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["auth", "verify-otp"]}
+          },
+          "response": [{"status": "OK", "code": 200, "body": "{\"message\": \"OTP verified successfully\", \"token\": \"jwt-token-here\"}"}]
+        }
+      ]
+    },
+    {
+      "name": "Owners",
+      "item": [
+        {
+          "name": "Create Owner",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"John Doe\", \"email\": \"john@example.com\", \"mobile\": \"9876543210\", \"shop_name\": \"John's Shop\", \"address\": \"123 Main St\", \"password\": \"password123\"}"
+            },
+            "url": {"raw": "http://localhost:8000/owners/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["owners"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"name\": \"John Doe\", \"email\": \"john@example.com\", \"mobile\": \"9876543210\", \"shop_name\": \"John's Shop\", \"address\": \"123 Main St\", \"otp_code\": null, \"otp_expires_at\": null}"
+          }]
+        },
+        {
+          "name": "List Owners",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/owners/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["owners"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"name\": \"John Doe\", \"email\": \"john@example.com\", \"mobile\": \"9876543210\", \"shop_name\": \"John's Shop\", \"address\": \"123 Main St\", \"otp_code\": null, \"otp_expires_at\": null}]"
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Stores",
+      "item": [
+        {
+          "name": "Create Store",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Store A\", \"location\": \"City Center\", \"owner_id\": 1}"
+            },
+            "url": {"raw": "http://localhost:8000/stores/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["stores"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"name\": \"Store A\", \"location\": \"City Center\", \"owner_id\": 1}"
+          }]
+        },
+        {
+          "name": "Get Stores by Owner",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/stores/?owner_id=1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["stores"], "query": [{"key": "owner_id", "value": "1"}]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"name\": \"Store A\", \"location\": \"City Center\", \"owner_id\": 1}]"
+          }]
+        },
+        {
+          "name": "Get My Store (StoreMan)",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/stores/me?store_id=1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["stores", "me"], "query": [{"key": "store_id", "value": "1"}]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"name\": \"Store A\", \"location\": \"City Center\", \"owner_id\": 1}"
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Store Managers",
+      "item": [
+        {
+          "name": "Create Store Manager",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Bob Smith\", \"mobile\": \"8765432109\", \"password\": \"storeman123\", \"store_id\": 1}"
+            },
+            "url": {"raw": "http://localhost:8000/storemans/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["storemans"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"name\": \"Bob Smith\", \"mobile\": \"8765432109\", \"store_id\": 1}"
+          }]
+        },
+        {
+          "name": "Get Store Manager by Store",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/storemans/by-store/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["storemans", "by-store", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"name\": \"Bob Smith\", \"mobile\": \"8765432109\", \"store_id\": 1}"
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Alice\", \"email\": \"alice@example.com\", \"phone\": \"1234567890\", \"store_id\": 1}"
+            },
+            "url": {"raw": "http://localhost:8000/customers/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["customers"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"name\": \"Alice\", \"email\": \"alice@example.com\", \"phone\": \"1234567890\", \"store_id\": 1}"
+          }]
+        },
+        {
+          "name": "Get Customers by Store",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/customers/by-store/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["customers", "by-store", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"name\": \"Alice\", \"email\": \"alice@example.com\", \"phone\": \"1234567890\", \"store_id\": 1}]"
+          }]
+        },
+        {
+          "name": "Bulk Upload Customers",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "multipart/form-data"}],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "store_id", "value": "1", "type": "text"},
+                {"key": "file", "type": "file", "description": "CSV file with columns: name,email,phone"}
+              ]
+            },
+            "url": {"raw": "http://localhost:8000/customers/upload-bulk/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["customers", "upload-bulk"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"message\": \"Successfully inserted 10 customers into store 1\"}"
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Laptop\", \"price\": 999.99}"
+            },
+            "url": {"raw": "http://localhost:8000/products/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["products"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"name\": \"Laptop\", \"price\": 999.99}"
+          }]
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/products/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["products"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"name\": \"Laptop\", \"price\": 999.99}]"
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"store_id\": 1, \"customer_id\": 1, \"items\": [{\"product_id\": 1, \"quantity\": 2, \"price\": 999.99}]}"
+            },
+            "url": {"raw": "http://localhost:8000/orders/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["orders"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"store_id\": 1, \"customer_id\": 1, \"total\": 1999.98, \"status\": \"Pending\", \"created_at\": \"2025-09-23T12:20:00+05:30\", \"items\": [{\"id\": 1, \"product_id\": 1, \"quantity\": 2, \"price\": 999.99}]}"
+          }]
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/orders/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["orders", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"store_id\": 1, \"customer_id\": 1, \"total\": 1999.98, \"status\": \"Pending\", \"created_at\": \"2025-09-23T12:20:00+05:30\", \"items\": [{\"id\": 1, \"product_id\": 1, \"quantity\": 2, \"price\": 999.99}]}"
+          }]
+        },
+        {
+          "name": "Get Orders by Customer",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/orders/by-customer/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["orders", "by-customer", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"store_id\": 1, \"customer_id\": 1, \"total\": 1999.98, \"status\": \"Pending\", \"created_at\": \"2025-09-23T12:20:00+05:30\", \"items\": [{\"id\": 1, \"product_id\": 1, \"quantity\": 2, \"price\": 999.99}]}]"
+          }]
+        },
+        {
+          "name": "Get Orders by Store",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/orders/by-store/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["orders", "by-store", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"store_id\": 1, \"customer_id\": 1, \"total\": 1999.98, \"status\": \"Pending\", \"created_at\": \"2025-09-23T12:20:00+05:30\", \"items\": [{\"id\": 1, \"product_id\": 1, \"quantity\": 2, \"price\": 999.99}]}]"
+          }]
+        },
+        {
+          "name": "Generate Invoice",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "http://localhost:8000/orders/1/invoice", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["orders", "1", "invoice"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"message\": \"Invoice generated\", \"file_path\": \"/path/to/invoice_1.pdf\"}"
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Inquiries",
+      "item": [
+        {
+          "name": "Create Inquiry",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customer_id\": 1, \"store_id\": 1, \"subject\": \"Product Availability\", \"message\": \"Is the laptop in stock?\", \"status\": \"Pending\"}"
+            },
+            "url": {"raw": "http://localhost:8000/inquiries/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["inquiries"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"customer_id\": 1, \"store_id\": 1, \"subject\": \"Product Availability\", \"message\": \"Is the laptop in stock?\", \"status\": \"Pending\", \"created_at\": \"2025-09-23T12:20:00+05:30\"}"
+          }]
+        },
+        {
+          "name": "Get Inquiries by Store",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/inquiries/by-store/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["inquiries", "by-store", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"customer_id\": 1, \"store_id\": 1, \"subject\": \"Product Availability\", \"message\": \"Is the laptop in stock?\", \"status\": \"Pending\", \"created_at\": \"2025-09-23T12:20:00+05:30\"}]"
+          }]
+        },
+        {
+          "name": "Get Inquiries by Customer",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/inquiries/by-customer/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["inquiries", "by-customer", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"customer_id\": 1, \"store_id\": 1, \"subject\": \"Product Availability\", \"message\": \"Is the laptop in stock?\", \"status\": \"Pending\", \"created_at\": \"2025-09-23T12:20:00+05:30\"}]"
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Offers",
+      "item": [
+        {
+          "name": "Create Offer",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Winter Sale\", \"description\": \"20% off on electronics\", \"discount\": 20, \"valid_until\": \"2025-12-31T23:59:59\", \"store_id\": 1}"
+            },
+            "url": {"raw": "http://localhost:8000/offers/", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["offers"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "{\"id\": 1, \"title\": \"Winter Sale\", \"description\": \"20% off on electronics\", \"discount\": 20, \"valid_until\": \"2025-12-31T23:59:59\", \"store_id\": 1, \"created_at\": \"2025-09-23T12:20:00+05:30\"}"
+          }]
+        },
+        {
+          "name": "Get Offers by Store",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/offers/by-store/1", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["offers", "by-store", "1"]}
+          },
+          "response": [{
+            "status": "OK",
+            "code": 200,
+            "body": "[{\"id\": 1, \"title\": \"Winter Sale\", \"description\": \"20% off on electronics\", \"discount\": 20, \"valid_until\": \"2025-12-31T23:59:59\", \"store_id\": 1, \"created_at\": \"2025-09-23T12:20:00+05:30\"}]"
+          }]
+        }
+      ]
+    }
+  ]
+}

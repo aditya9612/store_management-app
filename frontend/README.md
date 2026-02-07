@@ -1,12 +1,47 @@
-# React + Vite
+# StoreHub Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React-based frontend for the StoreHub management system built with Vite.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Install dependencies:
+```bash
+npm install
+```
 
-## Expanding the ESLint configuration
+2. Configure environment variables:
+```bash
+cp .env.example .env
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Edit `.env` and set your API URL:
+```
+VITE_API_URL=http://localhost:8000
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+## Features
+
+- **Multi-role Dashboard**: Support for shop owners, customers, and company admins
+- **Real-time Updates**: Live data synchronization
+- **Responsive Design**: Mobile-friendly interface
+- **Secure Authentication**: OTP-based login system
+- **File Upload**: Bulk customer import functionality
+
+## Delete Confirmations
+
+All delete operations now include:
+- **Specific Item Names**: Shows exactly what will be deleted
+- **Warning Messages**: Clear indication of permanent actions
+- **Visual Indicators**: Warning icons and proper styling
+- **Consistent UX**: Same confirmation flow across all sections
+
+## Browser Compatibility
+
+- Uses environment variables for API URLs to prevent security warnings
+- No hardcoded localhost references in production builds
+- Responsive design for all screen sizes

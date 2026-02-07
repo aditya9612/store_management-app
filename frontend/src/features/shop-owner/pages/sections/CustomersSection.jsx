@@ -15,6 +15,7 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [phone, setPhone] = useState('');
+  const [expandedCustomer, setExpandedCustomer] = useState(null);
 
   const fetchCustomers = useCallback(async () => {
     if (!selectedShop?.id) return;
@@ -34,6 +35,13 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
     try {
       setLoadingOrders(true);
       
+      // If clicking the same customer, toggle the orders view
+      if (expandedCustomer === customerId) {
+        setExpandedCustomer(null);
+        setSelectedCustomer(null);
+        return;
+      }
+      
       // Fetch orders for this customer from this store
       const response = await ordersApi.listByCustomer(customerId);
       
@@ -42,6 +50,7 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
       
       setCustomerOrders(filteredOrders);
       setSelectedCustomer(customers.find(c => c.id === customerId));
+      setExpandedCustomer(customerId);
     } catch (error) {
       toast.error('Failed to fetch customer orders');
       console.error(error);
@@ -112,9 +121,6 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
 
     try {
       setLoading(true);
-      console.log('🔍 Frontend is running on:', window.location.origin);
-      console.log('📤 Attempting to upload to:', `http://localhost:8000/customers/upload-bulk/?store_id=${selectedShop.id}`);
-
       // Use the authService bulk upload function
       const response = await authService.bulkUploadCustomers(selectedShop.id, file);
 
@@ -317,13 +323,18 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
     value={phone}
     onChange={(e) => {
       const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+      // 🚫 BLOCK: Prevent input if first digit is 1-5
+      if (value.length > 0 && /^[1-5]/.test(value.charAt(0))) {
+        return; // Don't update state if first digit is invalid
+      }
       if (value.length <= 10) {
         setPhone(value);
       }
     }}
-    pattern="[0-9]{10}"
+    pattern="[6-9][0-9]{9}"
     maxLength="10"
     required
+    title="Phone number must start with 6-9 (e.g., 9876543210)"
   />
 </div>
 
@@ -402,6 +413,19 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
                   type="tel" 
                   required 
                   defaultValue={editingCustomer.phone}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                    // 🚫 BLOCK: Prevent input if first digit is 1-5
+                    if (value.length > 0 && /^[1-5]/.test(value.charAt(0))) {
+                      return; // Don't update state if first digit is invalid
+                    }
+                    if (value.length <= 10) {
+                      e.target.value = value;
+                    }
+                  }}
+                  pattern="[6-9][0-9]{9}"
+                  maxLength="10"
+                  title="Phone number must start with 6-9 (e.g., 9876543210)"
                 />
               </div>
 
@@ -439,13 +463,21 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
       {showDeleteConfirm && (
         <div className="modal-overlay">
           <div className="confirmation-modal">
-            <h3>Confirm Deletion</h3>
-            <p>Are you sure you want to delete this customer?</p>
+            <div className="confirmation-header">
+              <i className="fas fa-exclamation-triangle warning-icon"></i>
+              <h3>Delete Customer</h3>
+            </div>
+            <div className="confirmation-body">
+              <p>Are you sure you want to delete the customer <strong>"{customers.find(c => c.id === showDeleteConfirm)?.name}"</strong>?</p>
+              <p className="warning-text">This action cannot be undone and will permanently remove the customer and all associated data from your store.</p>
+            </div>
             <div className="form-actions">
-              <button className="submit-btn" onClick={() => handleDeleteCustomer(showDeleteConfirm)}>
-                Confirm
+              <button className="submit-btn delete-confirm" onClick={() => handleDeleteCustomer(showDeleteConfirm)}>
+                <i className="fas fa-trash"></i>
+                Yes, Delete
               </button>
               <button className="cancel-btn" onClick={() => setShowDeleteConfirm(null)}>
+                <i className="fas fa-times"></i>
                 Cancel
               </button>
             </div>
@@ -479,79 +511,85 @@ export default function CustomersSection({ selectedShop, customers, setCustomers
             </thead>
             <tbody>
               {filteredCustomers.map((customer, idx) => (
-                <tr 
-                  key={customer.id} 
-                  onClick={() => fetchCustomerOrders(customer.id)}
-                  className={selectedCustomer?.id === customer.id ? 'selected-row' : ''}
-                >
-                  <td>{idx + 1}</td>
-                  <td>{customer.name}</td>
-                  <td>{customer.email}</td>
-                  <td>{customer.phone}</td>
-                  <td>{customer.address || "-"}</td>
-                  <td className="actions">
-                    <button className="action-btn edit" title="Edit" onClick={(e) => { e.stopPropagation(); setEditingCustomer(customer); }}>
-                      <i className="fas fa-edit"></i>
-                    </button>
-                    <button className="action-btn delete" title="Delete" onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(customer.id); }}>
-                      <i className="fas fa-trash"></i>
-                    </button>
-                  </td>
-                </tr>
+                <React.Fragment key={customer.id}>
+                  <tr 
+                    onClick={() => fetchCustomerOrders(customer.id)}
+                    className={expandedCustomer === customer.id ? 'selected-row' : ''}
+                  >
+                    <td>{idx + 1}</td>
+                    <td>
+                      <div className="customer-name">
+                        {customer.name}
+                        {expandedCustomer === customer.id && (
+                          <i className="fas fa-chevron-down"></i>
+                        )}
+                      </div>
+                    </td>
+                    <td>{customer.email}</td>
+                    <td>{customer.phone}</td>
+                    <td>{customer.address || "-"}</td>
+                    <td className="actions">
+                      <button className="action-btn edit" title="Edit" onClick={(e) => { e.stopPropagation(); setEditingCustomer(customer); }}>
+                        <i className="fas fa-edit"></i>
+                      </button>
+                      <button className="action-btn delete" title="Delete" onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(customer.id); }}>
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedCustomer === customer.id && (
+                    <tr className="order-details-row">
+                      <td colSpan="6" className="order-details-cell">
+                        <div className="customer-orders-section">
+                          <h4>
+                            <i className="fas fa-shopping-cart"></i>
+                            Orders for {selectedCustomer.name}
+                          </h4>
+                          
+                          {loadingOrders ? (
+                            <div className="loading-state">
+                              <i className="fas fa-spinner fa-spin"></i>
+                              Loading orders...
+                            </div>
+                          ) : customerOrders.length === 0 ? (
+                            <div className="empty-state">
+                              <i className="fas fa-box-open"></i>
+                              <p>This customer hasn't placed any orders yet.</p>
+                            </div>
+                          ) : (
+                            <table className="orders-table">
+                              <thead>
+                                <tr>
+                                  <th>Order ID</th>
+                                  <th>Date</th>
+                                  <th>Items</th>
+                                  <th>Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {customerOrders.map((order) => (
+                                  <tr key={order.id}>
+                                    <td>#{order.id}</td>
+                                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                                    <td>{order.items?.length || 0} items</td>
+                                    <td>₹{order.total?.toFixed(2) || '0.00'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
         )}
       </div>
 
-      {selectedCustomer && (
-        <div className="customer-orders-section">
-          <h3>
-            <i className="fas fa-shopping-cart"></i>
-            Orders for {selectedCustomer.name}
-          </h3>
-          
-          {loadingOrders ? (
-            <div className="loading-state">
-              <i className="fas fa-spinner fa-spin"></i>
-              Loading orders...
-            </div>
-          ) : customerOrders.length === 0 ? (
-            <div className="empty-state">
-              <i className="fas fa-box-open"></i>
-              <h4>No Orders Found</h4>
-              <p>This customer hasn't placed any orders yet.</p>
-            </div>
-          ) : (
-            <table className="orders-table">
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Date</th>
-                  <th>Items</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customerOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td>#{order.id}</td>
-                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
-                    <td>{order.items?.length || 0} items</td>
-                    <td>₹{order.total?.toFixed(2) || '0.00'}</td>
-                    <td>
-                      <span className={`status ${order.status?.toLowerCase()}`}>
-                        {order.status || 'Pending'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+      {/* Removed the bottom orders section as it's now inline */}
     </div>
   );
 }

@@ -156,7 +156,7 @@ export default function ProductManagementSection({ products, setProducts }) {
             ) : (
               <>
                 {p.image_path ? (
-                  <img src={`http://localhost:8000${p.image_path}`} alt={p.name} className="product-image" />
+                  <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${p.image_path}`} alt={p.name} className="product-image" />
                 ) : (
                   <div className="placeholder">No Image</div>
                 )}
@@ -178,13 +178,21 @@ export default function ProductManagementSection({ products, setProducts }) {
       {showDeleteConfirm && (
         <div className="modal-overlay">
           <div className="confirmation-modal">
-            <h3>Confirm Deletion</h3>
-            <p>Are you sure you want to delete this product?</p>
+            <div className="confirmation-header">
+              <i className="fas fa-exclamation-triangle warning-icon"></i>
+              <h3>Delete Product</h3>
+            </div>
+            <div className="confirmation-body">
+              <p>Are you sure you want to delete the product <strong>"{products.find(p => p.id === showDeleteConfirm)?.name}"</strong>?</p>
+              <p className="warning-text">This action cannot be undone and will permanently remove the product from your store inventory.</p>
+            </div>
             <div className="form-actions">
-              <button className="submit-btn" onClick={() => handleDelete(showDeleteConfirm)}>
-                Confirm
+              <button className="submit-btn delete-confirm" onClick={() => handleDelete(showDeleteConfirm)}>
+                <i className="fas fa-trash"></i>
+                Yes, Delete
               </button>
               <button className="cancel-btn" onClick={() => setShowDeleteConfirm(null)}>
+                <i className="fas fa-times"></i>
                 Cancel
               </button>
             </div>

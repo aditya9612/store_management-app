@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FiMenu, FiX, FiShoppingCart, FiUser, FiSearch, FiHeart, FiPackage } from "react-icons/fi";
-import logo from "@shared/assets/images/logo.png";
+import logo from "@shared/assets/images/Logo1.png";
 import "@shared/styles/Header.css";
 
 export default function Header() {

@@ -11,12 +11,38 @@ function ShopOwnerLoginPage () {
   const [loading, setLoading] = useState (false);
   const navigate = useNavigate ();
 
-  // Check if already logged in
+  // Check if already logged in and route appropriately
   useEffect (
     () => {
-      const ownerData = localStorage.getItem ('owner_id');
-      if (ownerData) {
-        navigate ('/dashboard');
+      const ownerId = localStorage.getItem ('owner_id');
+      if (ownerId) {
+        // Check if we have a selected shop (from previous session)
+        const selectedStoreId = localStorage.getItem('selectedStoreId');
+        if (selectedStoreId) {
+          navigate ('/dashboard');
+        } else {
+          // No shop selected, need to check shop count
+          const checkAndRoute = async () => {
+            try {
+              const shopsResponse = await authService.getShops(ownerId);
+              const shops = Array.isArray(shopsResponse.data) ? shopsResponse.data : [];
+
+              if (shops.length > 1) {
+                navigate ('/shop-selector');
+              } else if (shops.length === 1) {
+                const singleShop = shops[0];
+                localStorage.setItem("selectedStoreId", singleShop.id.toString());
+                navigate ('/dashboard');
+              } else {
+                navigate ('/shop-selector'); // No shops, let user add them
+              }
+            } catch (error) {
+              console.error('Error checking shops:', error);
+              navigate ('/shop-selector'); // Default to shop selector on error
+            }
+          };
+          checkAndRoute();
+        }
       }
     },
     [navigate]
@@ -59,8 +85,29 @@ function ShopOwnerLoginPage () {
       localStorage.setItem ('owner_name', result.data.owner_name);
       localStorage.setItem ('role', result.data.role);
 
+      // Fetch shops to determine routing
+      console.log('🔍 Fetching shops for owner:', result.data.owner_id);
+      const shopsResponse = await authService.getShops(result.data.owner_id);
+      const shops = Array.isArray(shopsResponse.data) ? shopsResponse.data : [];
+      console.log('📊 Owner has', shops.length, 'shops');
+
       toast.success (result.message);
-      navigate ('/dashboard');
+
+      // Route based on shop count
+      if (shops.length > 1) {
+        console.log('🔄 Multiple shops found, navigating to shop selector');
+        navigate ('/shop-selector');
+      } else if (shops.length === 1) {
+        console.log('🏪 Single shop found, navigating directly to dashboard');
+        // Auto-select the single shop
+        const singleShop = shops[0];
+        localStorage.setItem("selectedStoreId", singleShop.id.toString());
+        navigate ('/dashboard');
+      } else {
+        console.log('⚠️ No shops found, navigating to shop selector for setup');
+        // No shops found, let user add shops first
+        navigate ('/shop-selector');
+      }
     } catch (error) {
       toast.error (error.message, {
         position: 'top-center',
@@ -127,18 +174,25 @@ function ShopOwnerLoginPage () {
                     <span className="input-group-text">+91</span>
                     <input
                       type="tel"
+                      id="phone"
+                      name="phone"
                       className="form-control"
-                      placeholder="Enter your mobile number"
+                      pattern="[6-9][0-9]{9}"
+                      maxLength="10"
+                      required
+                      placeholder="Enter 10-digit mobile number"
+                      title="Phone number must start with 6-9 (e.g., 9876543210)"
                       value={mobile}
                       onChange={e => {
                         const value = e.target.value.replace (/\D/g, ''); // Only allow digits
+                        // Prevent input if first digit is 1-5
+                        if (value.length > 0 && /^[1-5]/.test(value.charAt(0))) {
+                          return; // Don't update state if first digit is invalid
+                        }
                         if (value.length <= 10) {
                           setMobile (value);
                         }
                       }}
-                      pattern="[0-9]{10}"
-                      maxLength="10"
-                      required
                     />
                   </div>
                   <small className="form-text text-muted">

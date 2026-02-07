@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+// API Base URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 // Create axios instance with base config
 export const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -56,7 +59,7 @@ api.interceptors.response.use(
     }
 
     // Handle API errors by throwing the backend's message
-    const message = error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || 'An unexpected error occurred';
+    const message = error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || error.response?.data?.error || 'An unexpected error occurred';
     throw new Error(message);
   }
 );
@@ -223,7 +226,12 @@ export const authService = {
       console.log('🏗️ Creating new shop:', shopData);
       const response = await api.post('/stores/create', {
         name: shopData.name,
-        location: shopData.location,
+        address: shopData.address,
+        city: shopData.city,
+        state: shopData.state,
+        pincode: shopData.pincode,
+        gstin: shopData.gstin || null,
+        status: shopData.status || 'active',
         owner_id: shopData.owner_id
       });
       console.log('✨ Shop created successfully:', response);
@@ -270,7 +278,8 @@ export const authService = {
       // Note: store_id is passed as query parameter, not in FormData
 
       // Use axios directly for file uploads to ensure proper FormData handling
-      const response = await axios.post(`http://localhost:8000/customers/upload-bulk/?store_id=${storeId}`, formData, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await axios.post(`${apiUrl}/customers/upload-bulk/?store_id=${storeId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -285,7 +294,7 @@ export const authService = {
 
       // Enhanced error handling
       if (error.code === 'ERR_NETWORK') {
-        throw new Error('Cannot connect to backend server. Please ensure the backend is running on http://localhost:8000');
+        throw new Error('Cannot connect to backend server. Please ensure the backend is running.');
       }
 
       if (error.response?.status === 403) {
@@ -358,11 +367,172 @@ export const authService = {
     try {
       console.log('🗑️ Deleting owner:', ownerId);
       const response = await api.delete(`/owners/${ownerId}`);
-      console.log('✅ Owner deleted:', response);
+      console.log('✅ Owner deleted successfully:', response);
       return response;
     } catch (error) {
       console.error('❌ Failed to delete owner:', error);
       throw new Error(error.message);
+    }
+  },
+
+  // Send notification to user (owner or storeman)
+  sendNotification: async (notificationData) => {
+    try {
+      console.log('📬 Sending notification:', notificationData);
+      const response = await api.post('/admin/notifications/send', notificationData);
+      console.log('✅ Notification sent successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to send notification:', error);
+      throw new Error(error.message || 'Failed to send notification');
+    }
+  },
+
+  // Force logout shop owner
+  forceLogoutShopOwner: async (ownerId) => {
+    try {
+      console.log(`🔒 Forcing logout for shop owner: ${ownerId}`);
+      const response = await api.post(`/admin/auth/force-logout/owner/${ownerId}`);
+      console.log('✅ Force logout triggered successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to force logout shop owner:', error);
+      throw new Error(error.message || 'Failed to force logout shop owner');
+    }
+  }
+};
+
+// Owner Settings API
+export const ownerSettingsApi = {
+  // Get owner settings
+  getSettings: async (ownerId) => {
+    try {
+      console.log(` Fetching settings for owner ${ownerId}`);
+      const response = await api.get(`/owners/${ownerId}/settings`);
+      console.log(' Owner settings fetched:', response);
+      return response;
+    } catch (error) {
+      console.error(' Failed to fetch owner settings:', error);
+      throw new Error(error.message || 'Failed to fetch owner settings');
+    }
+  },
+
+  // Update owner settings
+  updateSettings: async (ownerId, settings) => {
+    try {
+      console.log(` Updating settings for owner ${ownerId}:`, settings);
+      const response = await api.put(`/owners/${ownerId}/settings`, settings);
+      console.log(' Owner settings updated:', response);
+      return response;
+    } catch (error) {
+      console.error(' Failed to update owner settings:', error);
+      throw new Error(error.message || 'Failed to update owner settings');
+    }
+  }
+};
+
+// Owner Reports API
+export const ownerReportsApi = {
+  // Get owner reports overview
+  getOverview: async (ownerId, period = 'all_time') => {
+    try {
+      console.log(` Fetching owner reports for owner ${ownerId}`);
+      const response = await api.get(`/owner/reports/overview/${ownerId}?period=${period}`);
+      console.log(' Owner reports fetched:', response);
+      return response;
+    } catch (error) {
+      console.error(' Failed to fetch owner reports:', error);
+      throw new Error(error.message);
+    }
+  },
+
+  // Get owner revenue report
+  getRevenue: async (ownerId, period = 'all_time') => {
+    try {
+      console.log(` Fetching owner revenue for owner ${ownerId}`);
+      const response = await api.get(`/owner/reports/revenue/${ownerId}?period=${period}`);
+      console.log(' Owner revenue fetched:', response);
+      return response;
+    } catch (error) {
+      console.error(' Failed to fetch owner revenue:', error);
+      throw new Error(error.message);
+    }
+  },
+
+  // Get owner sales report
+  getSales: async (ownerId, period = 'all_time') => {
+    try {
+      console.log(` Fetching owner sales for owner ${ownerId}`);
+      const response = await api.get(`/owner/reports/sales/${ownerId}?period=${period}`);
+      console.log(' Owner sales fetched:', response);
+      return response;
+    } catch (error) {
+      console.error(' Failed to fetch owner sales:', error);
+      throw new Error(error.message);
+    }
+  },
+
+  // Export to Excel
+  exportToExcel: async (ownerId, period = 'all_time') => {
+    try {
+      console.log(' Exporting owner report to Excel');
+      const response = await fetch(`${API_URL}/owner/reports/export/excel/${ownerId}?period=${period}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `owner_report_${ownerId}_${period}_${Date.now()}.csv`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+
+      console.log(' Excel exported successfully');
+      return true;
+    } catch (error) {
+      console.error(' Failed to export Excel:', error);
+      throw error;
+    }
+  },
+
+  // Export to PDF
+  exportToPDF: async (ownerId, period = 'all_time') => {
+    try {
+      console.log(' Exporting owner report to PDF');
+      const response = await fetch(`${API_URL}/owner/reports/export/pdf/${ownerId}?period=${period}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `owner_report_${ownerId}_${period}_${Date.now()}.html`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+
+      console.log(' PDF exported successfully');
+      return true;
+    } catch (error) {
+      console.error(' Failed to export PDF:', error);
+      throw error;
     }
   }
 };
@@ -426,7 +596,25 @@ export const ordersApi = {
       const response = await api.post('/orders', order);
       return response;
     } catch (error) {
-      throw new Error(error.message);
+      // Create a more detailed error object
+      const apiError = new Error(error.message);
+      
+      // Attach response data if available
+      if (error.response) {
+        apiError.response = {
+          data: error.response.data,
+          status: error.response.status,
+          headers: error.response.headers
+        };
+      } else if (error.request) {
+        // The request was made but no response was received
+        apiError.request = error.request;
+      }
+      
+      // Add the original error config
+      apiError.config = error.config;
+      
+      throw apiError;
     }
   },
   listByStore: async (storeId) => {
@@ -456,8 +644,9 @@ export const ordersApi = {
   downloadInvoice: async (orderId) => {
     try {
       // Use axios directly to get the raw response with responseType blob
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const response = await axios({
-        url: `http://localhost:8000/orders/${orderId}/download-invoice`,
+        url: `${apiUrl}/orders/${orderId}/download-invoice`,
         method: 'GET',
         responseType: 'blob'
       });
@@ -535,6 +724,298 @@ export const customersApi = {
       const response = await api.delete(`/customers/${customerId}`);
       return response;
     } catch (error) {
+      throw new Error(error.message);
+    }
+  }
+};
+
+// Settings API
+export const settingsApi = {
+  // Get company settings
+  getCompanySettings: async () => {
+    try {
+      console.log('🔧 Fetching company settings');
+      const response = await api.get('/admin/settings/company');
+      console.log('✅ Company settings fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch company settings:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Update company settings
+  updateCompanySettings: async (settingsData) => {
+    try {
+      console.log('🔄 Updating company settings:', settingsData);
+      const response = await api.put('/admin/settings/company', settingsData);
+      console.log('✅ Company settings updated:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to update company settings:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Get admin profile
+  getAdminProfile: async () => {
+    try {
+      console.log('👤 Fetching admin profile');
+      const response = await api.get('/admin/profile');
+      console.log('✅ Admin profile fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch admin profile:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Update admin profile
+  updateAdminProfile: async (profileData) => {
+    try {
+      console.log('🔄 Updating admin profile:', profileData);
+      const response = await api.put('/admin/profile', profileData);
+      console.log('✅ Admin profile updated:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to update admin profile:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Change admin password
+  changePassword: async (passwordData) => {
+    try {
+      console.log('🔐 Changing admin password');
+      const response = await api.post('/admin/change-password', passwordData);
+      console.log('✅ Password changed successfully');
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to change password:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Export data
+  exportData: async (dataType) => {
+    try {
+      console.log('📤 Exporting data:', dataType);
+      const response = await api.get(`/admin/export/${dataType}`, {
+        responseType: 'blob'
+      });
+      console.log('✅ Data exported successfully');
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to export data:', error);
+      throw new Error(error.message);
+    }
+  }
+};
+
+// Reports API
+export const reportsApi = {
+  // Get comprehensive reports overview
+  getOverview: async (period = 'all_time') => {
+    try {
+      console.log('📊 Fetching reports overview');
+      const response = await api.get(`/admin/reports/overview?period=${period}`);
+      console.log('✅ Reports overview fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch reports overview:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Get shop statistics
+  getShopReports: async () => {
+    try {
+      console.log('🏪 Fetching shop reports');
+      const response = await api.get('/admin/reports/shops');
+      console.log('✅ Shop reports fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch shop reports:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Get revenue statistics
+  getRevenueReport: async () => {
+    try {
+      console.log('💰 Fetching revenue report');
+      const response = await api.get('/admin/reports/revenue');
+      console.log('✅ Revenue report fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch revenue report:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Get inventory statistics
+  getInventoryReport: async () => {
+    try {
+      console.log('📦 Fetching inventory report');
+      const response = await api.get('/admin/reports/inventory');
+      console.log('✅ Inventory report fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch inventory report:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Export to PDF
+  exportToPDF: async (period = 'all_time') => {
+    try {
+      console.log('📄 Exporting to PDF');
+      const response = await fetch(`${API_URL}/admin/reports/export/pdf?period=${period}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `business_report_${period}_${Date.now()}.html`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      console.log('✅ PDF exported successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to export PDF:', error);
+      throw error;
+    }
+  },
+  
+  // Export to Excel
+  exportToExcel: async (period = 'all_time') => {
+    try {
+      console.log('📊 Exporting to Excel');
+      const response = await fetch(`${API_URL}/admin/reports/export/excel?period=${period}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `business_report_${period}_${Date.now()}.csv`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      console.log('✅ Excel exported successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to export Excel:', error);
+      throw error;
+    }
+  },
+  
+  // Export Summary
+  exportSummary: async (period = 'all_time') => {
+    try {
+      console.log('📋 Exporting summary');
+      const response = await fetch(`${API_URL}/admin/reports/export/summary?period=${period}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `executive_summary_${period}_${Date.now()}.json`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      console.log('✅ Summary exported successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to export summary:', error);
+      throw error;
+    }
+  }
+};
+
+// Activity API
+export const activityApi = {
+  // Get recent activities
+  getRecentActivities: async (limit = 20) => {
+    try {
+      console.log('📋 Fetching recent activities');
+      const response = await api.get(`/admin/activities/recent?limit=${limit}`);
+      console.log('✅ Recent activities fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch recent activities:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Get activities by type
+  getActivitiesByType: async (activityType, limit = 10) => {
+    try {
+      console.log(`📋 Fetching activities of type: ${activityType}`);
+      const response = await api.get(`/admin/activities/by-type/${activityType}?limit=${limit}`);
+      console.log('✅ Activities by type fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch activities by type:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Get activities for specific entity
+  getActivitiesByEntity: async (entityType, entityId) => {
+    try {
+      console.log(`📋 Fetching activities for ${entityType} ${entityId}`);
+      const response = await api.get(`/admin/activities/entity/${entityType}/${entityId}`);
+      console.log('✅ Entity activities fetched:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch entity activities:', error);
+      throw new Error(error.message);
+    }
+  },
+  
+  // Log a new activity
+  logActivity: async (activityData) => {
+    try {
+      console.log('📝 Logging new activity:', activityData);
+      const response = await api.post('/admin/activities/log', activityData);
+      console.log('✅ Activity logged:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to log activity:', error);
       throw new Error(error.message);
     }
   }

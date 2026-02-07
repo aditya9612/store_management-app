@@ -836,7 +836,18 @@ function ShopSelectorPage() {
                     minLength="10"
                     maxLength="10"
                     pattern="^[6-9]\d{9}$"
-                    title="Please enter a valid 10-digit mobile number"
+                    title="Phone number must start with 6-9 (e.g., 9876543210)"
+                    value={shopFormData.owner_mobile}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                      // 🚫 BLOCK: Prevent input if first digit is 1-5
+                      if (value.length > 0 && /^[1-5]/.test(value.charAt(0))) {
+                        return; // Don't update state if first digit is invalid
+                      }
+                      if (value.length <= 10) {
+                        setShopFormData(prev => ({ ...prev, owner_mobile: value }));
+                      }
+                    }}
                   />
                 </div>
 

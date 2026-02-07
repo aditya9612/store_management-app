@@ -1,11 +1,7 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { authService } from "@/utils/api";
+import { authService, ownerReportsApi } from "@/utils/api";
 import { toast } from 'react-toastify';
-import { FaEdit, FaTrash, FaTimes, FaSave, FaPlus, FaStore, FaMapMarkerAlt, FaUserAlt, FaPhoneAlt } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
 import "@/features/shop-owner/styles/shop-owner-selector.css";
 function ShopSelectorPage() {
   const navigate = useNavigate();
@@ -13,49 +9,383 @@ function ShopSelectorPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [shops, setShops] = useState([]);
-  const [editingShop, setEditingShop] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const activePage = searchParams.get('tab') || 'shops';
-  const [shopFormData, setShopFormData] = useState({ 
-    name: '', 
-    location: '',
-    storeman_name: '',
-    storeman_mobile: ''
-  });
-  const [otpModal, setOtpModal] = useState({
-    isOpen: false,
-    shop: null,
-    mobile: '',
-    otp: '',
-    step: 'mobile'
-  });
-  const [isOtpLoading, setIsOtpLoading] = useState(false);
-  const [selectedShopForStatus, setSelectedShopForStatus] = useState(null);
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
-  const [isAddShopModalOpen, setIsAddShopModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [settings, setSettings] = useState({
+    // Dashboard Preferences
+    dashboard: {
+      defaultView: 'shops',
+      showWelcomeSection: true,
+      compactMode: false,
+      autoRefresh: true,
+      refreshInterval: 300, // seconds
+    },
+    // Notifications
+    notifications: {
+      emailAlerts: true,
+      pushNotifications: false,
+      shopUpdates: true,
+      revenueAlerts: true,
+      inventoryAlerts: false,
+      orderNotifications: true,
+    },
+    // Appearance
+    appearance: {
+      theme: 'light',
+      sidebarCollapsed: false,
+      showAnimations: true,
+      fontSize: 'medium',
+      language: 'en',
+    },
+    // Shop Management
+    shopManagement: {
+      autoBackup: true,
+      exportFormat: 'excel',
+      dataRetention: 365, // days
+      multiShopView: false,
+    }
+  });
+  
+  // Reports state
+  const [reportsData, setReportsData] = useState(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [ownerId, setOwnerId] = useState(null);
+  
+  // Revenue state
+  const [revenueData, setRevenueData] = useState(null);
+  const [revenueLoading, setRevenueLoading] = useState(false);
+  
+  // Sales state
+  const [salesData, setSalesData] = useState(null);
+  const [salesLoading, setSalesLoading] = useState(false);
+
+  const normalizedShops = useMemo(() => {
+    if (!Array.isArray(shops)) {
+      return [];
+    }
+
+    return shops.map((shop) => {
+      const metrics = shop?.metrics || {};
+      const totalRevenue = Number(
+        metrics.totalRevenue ??
+        shop?.total_revenue ??
+        shop?.revenue ??
+        metrics.revenue ??
+        0
+      );
+      const monthlyRevenue = Number(
+        metrics.monthlyRevenue ??
+        shop?.current_month_revenue ??
+        metrics.currentMonthRevenue ??
+        0
+      );
+      const previousMonthlyRevenue = Number(
+        metrics.previousMonthlyRevenue ??
+        shop?.previous_month_revenue ??
+        metrics.previousMonthRevenue ??
+        0
+      );
+
+      const trend = previousMonthlyRevenue > 0
+        ? ((monthlyRevenue - previousMonthlyRevenue) / previousMonthlyRevenue) * 100
+        : (monthlyRevenue > 0 ? 100 : 0);
+
+      return {
+        id: shop.id,
+        name: shop.name ?? "Unnamed Shop",
+        location: shop.location ?? shop.address ?? "Location not specified",
+        status: shop.status ?? "unknown",
+        totalRevenue,
+        monthlyRevenue,
+        previousMonthlyRevenue,
+        trend,
+      };
+    });
+  }, [shops]);
+
+  const revenueMetrics = useMemo(() => {
+    // Use backend revenue data if available
+    if (revenueData && revenueData.summary_stats && revenueData.shop_breakdown) {
+      const stats = revenueData.summary_stats;
+      const shops = revenueData.shop_breakdown;
+      
+      const totalRevenue = stats.total_revenue || 0;
+      const monthlyRevenue = stats.monthly_revenue || 0;
+      const previousMonthlyRevenue = stats.previous_monthly_revenue || 0;
+      const activeShops = stats.active_shops || 0;
+      const shopsCount = stats.total_shops || 0;
+      const growthPercent = stats.growth_percent || 0;
+      const averagePerShop = shopsCount > 0 ? totalRevenue / shopsCount : 0;
+      
+      // Top performers from backend data
+      const topPerformers = [...shops]
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, 4)
+        .map(shop => ({
+          id: shop.shop_id,
+          name: shop.shop_name,
+          location: shop.location,
+          status: shop.status,
+          totalRevenue: shop.total_revenue,
+          monthlyRevenue: shop.monthly_revenue,
+          previousMonthlyRevenue: shop.previous_monthly_revenue,
+          trend: shop.trend
+        }));
+      
+      // Performance alerts
+      const performanceAlerts = shopsCount > 1
+        ? shops
+            .filter((shop) => shop.monthly_revenue < averagePerShop * 0.5)
+            .map((shop) => ({
+              id: shop.shop_id,
+              name: shop.shop_name,
+              location: shop.location,
+              status: shop.status,
+              totalRevenue: shop.total_revenue,
+              monthlyRevenue: shop.monthly_revenue,
+              previousMonthlyRevenue: shop.previous_monthly_revenue,
+              trend: shop.trend,
+              message: `${shop.shop_name} is operating below 50% of the average monthly revenue`,
+            }))
+        : [];
+      
+      return {
+        totalRevenue,
+        monthlyRevenue,
+        previousMonthlyRevenue,
+        averagePerShop,
+        activeShops,
+        growthPercent,
+        topPerformers,
+        performanceAlerts,
+        shopsCount,
+      };
+    }
+    
+    // Fallback to frontend calculated data
+    const totalRevenue = normalizedShops.reduce((sum, shop) => sum + shop.totalRevenue, 0);
+    const monthlyRevenue = normalizedShops.reduce((sum, shop) => sum + shop.monthlyRevenue, 0);
+    const previousMonthlyRevenue = normalizedShops.reduce(
+      (sum, shop) => sum + shop.previousMonthlyRevenue,
+      0
+    );
+    const averagePerShop = normalizedShops.length ? totalRevenue / normalizedShops.length : 0;
+    const activeShops = normalizedShops.filter((shop) => shop.status === "active").length;
+    const growthPercent = previousMonthlyRevenue > 0
+      ? ((monthlyRevenue - previousMonthlyRevenue) / previousMonthlyRevenue) * 100
+      : (monthlyRevenue > 0 ? 100 : 0);
+
+    const topPerformers = [...normalizedShops]
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 4);
+
+    const performanceAlerts = normalizedShops.length > 1
+      ? normalizedShops
+          .filter((shop) => shop.monthlyRevenue < averagePerShop * 0.5)
+          .map((shop) => ({
+            ...shop,
+            message: `${shop.name} is operating below 50% of the average monthly revenue`,
+          }))
+      : [];
+
+    return {
+      totalRevenue,
+      monthlyRevenue,
+      previousMonthlyRevenue,
+      averagePerShop,
+      activeShops,
+      growthPercent,
+      topPerformers,
+      performanceAlerts,
+      shopsCount: normalizedShops.length,
+    };
+  }, [revenueData, normalizedShops]);
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+      }),
+    []
+  );
+
+  const formatCurrency = (value) => {
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return currencyFormatter.format(Math.max(0, safeValue));
+  };
+
+  const salesMetrics = useMemo(() => {
+    // Use backend sales data if available
+    if (salesData && salesData.summary_stats) {
+      const stats = salesData.summary_stats;
+      const topProducts = salesData.top_products || [];
+      const recentOrders = salesData.recent_orders || [];
+      const categoryBreakdown = salesData.category_breakdown || {};
+      
+      return {
+        totalSales: stats.total_sales || 0,
+        totalRevenue: stats.total_revenue || 0,
+        averageSaleValue: stats.average_sale_value || 0,
+        topProducts: topProducts,
+        categoryBreakdown: categoryBreakdown,
+        recentOrders: recentOrders.map(order => ({
+          ...order,
+          date: order.date ? new Date(order.date) : new Date()
+        })),
+        lowPerformingProducts: [],
+        topPerformingProducts: [],
+        productsCount: stats.products_count || 0,
+        activeShops: stats.active_shops || 0,
+        categoriesCount: stats.categories_count || 0
+      };
+    }
+    
+    // Fallback to mock data if backend data not available
+    const mockProducts = [
+      {
+        id: 1,
+        name: 'Wireless Headphones',
+        category: 'Electronics',
+        shop_id: normalizedShops[0]?.id || 1,
+        shop_name: normalizedShops[0]?.name || 'Main Store',
+        sales_count: 45,
+        revenue: 67500,
+        trend: 12.5
+      },
+      {
+        id: 2,
+        name: 'Smart Watch',
+        category: 'Electronics',
+        shop_id: normalizedShops[0]?.id || 1,
+        shop_name: normalizedShops[0]?.name || 'Main Store',
+        sales_count: 32,
+        revenue: 96000,
+        trend: -3.2
+      },
+      {
+        id: 3,
+        name: 'Laptop Stand',
+        category: 'Accessories',
+        shop_id: normalizedShops[1]?.id || 2,
+        shop_name: normalizedShops[1]?.name || 'Branch Store',
+        sales_count: 28,
+        revenue: 11200,
+        trend: 8.7
+      },
+      {
+        id: 4,
+        name: 'USB Cable',
+        category: 'Accessories',
+        shop_id: normalizedShops[0]?.id || 1,
+        shop_name: normalizedShops[0]?.name || 'Main Store',
+        sales_count: 67,
+        revenue: 20100,
+        trend: 15.3
+      },
+      {
+        id: 5,
+        name: 'Wireless Mouse',
+        category: 'Electronics',
+        shop_id: normalizedShops[1]?.id || 2,
+        shop_name: normalizedShops[1]?.name || 'Branch Store',
+        sales_count: 41,
+        revenue: 20500,
+        trend: 5.8
+      }
+    ];
+
+    // Calculate total sales metrics
+    const totalSales = mockProducts.reduce((sum, product) => sum + product.sales_count, 0);
+    const totalRevenue = mockProducts.reduce((sum, product) => sum + product.revenue, 0);
+    const averageSaleValue = totalSales > 0 ? totalRevenue / totalSales : 0;
+
+    // Top selling products
+    const topProducts = [...mockProducts]
+      .sort((a, b) => b.sales_count - a.sales_count)
+      .slice(0, 5);
+
+    // Products by category
+    const categoryBreakdown = mockProducts.reduce((acc, product) => {
+      if (!acc[product.category]) {
+        acc[product.category] = {
+          total_sales: 0,
+          total_revenue: 0,
+          products: 0
+        };
+      }
+      acc[product.category].total_sales += product.sales_count;
+      acc[product.category].total_revenue += product.revenue;
+      acc[product.category].products += 1;
+      return acc;
+    }, {});
+
+    // Recent orders (mock data)
+    const recentOrders = [
+      {
+        id: 1,
+        customer_name: 'John Doe',
+        product_name: 'Wireless Headphones',
+        shop_name: normalizedShops[0]?.name || 'Main Store',
+        amount: 1500,
+        date: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        status: 'completed'
+      },
+      {
+        id: 2,
+        customer_name: 'Jane Smith',
+        product_name: 'Smart Watch',
+        shop_name: normalizedShops[0]?.name || 'Main Store',
+        amount: 3000,
+        date: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+        status: 'completed'
+      },
+      {
+        id: 3,
+        customer_name: 'Bob Johnson',
+        product_name: 'USB Cable',
+        shop_name: normalizedShops[1]?.name || 'Branch Store',
+        amount: 300,
+        date: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+        status: 'pending'
+      }
+    ];
+
+    // Performance insights
+    const lowPerformingProducts = mockProducts
+      .filter(product => product.sales_count < 30)
+      .map(product => ({
+        ...product,
+        message: `${product.name} has low sales (${product.sales_count} units)`
+      }));
+
+    const topPerformingProducts = mockProducts
+      .filter(product => product.sales_count > 40)
+      .map(product => ({
+        ...product,
+        message: `${product.name} is a top seller (${product.sales_count} units)`
+      }));
+
+    return {
+      totalSales,
+      totalRevenue,
+      averageSaleValue,
+      topProducts,
+      categoryBreakdown,
+      recentOrders,
+      lowPerformingProducts,
+      topPerformingProducts,
+      productsCount: mockProducts.length,
+      activeShops: normalizedShops.filter(shop => shop.status === 'active').length,
+      categoriesCount: Object.keys(categoryBreakdown).length
+    };
+  }, [salesData, normalizedShops]);
 
   // Get owner_id from localStorage
   const owner_id = localStorage.getItem("owner_id");
   const ownerName = localStorage.getItem("owner_name"); // We should save this during login
-
-  // Resend OTP cooldown effect
-  useEffect(() => {
-    if (resendCooldown > 0) {
-      const timer = setTimeout(() => {
-        setResendCooldown(resendCooldown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [resendCooldown]);
-
-  const handleResendOtp = async () => {
-    if (resendCooldown > 0) return;
-
-    setResendCooldown(30); // 30 second cooldown
-    await handleOtpRequest();
-  };
 
   useEffect(() => {
     if (!owner_id) {
@@ -64,7 +394,42 @@ function ShopSelectorPage() {
     }
     fetchShops();
     checkCompanyAdmin();
+
+    // Load saved settings from localStorage
+    const savedSettings = localStorage.getItem('shopSelectorSettings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings(prevSettings => ({
+          ...prevSettings,
+          ...parsedSettings
+        }));
+      } catch (error) {
+        console.error('Failed to parse saved settings:', error);
+      }
+    }
   }, [owner_id, navigate]);
+  
+  // Fetch reports data when reports tab is active
+  useEffect(() => {
+    if (activePage === 'reports' && ownerId) {
+      fetchReportsData();
+    }
+  }, [activePage, ownerId]);
+  
+  // Fetch revenue data when revenue tab is active
+  useEffect(() => {
+    if (activePage === 'revenue' && ownerId) {
+      fetchRevenueData();
+    }
+  }, [activePage, ownerId]);
+  
+  // Fetch sales data when sales tab is active
+  useEffect(() => {
+    if (activePage === 'sales' && ownerId) {
+      fetchSalesData();
+    }
+  }, [activePage, ownerId]);
 
   const checkCompanyAdmin = async () => {
     try {
@@ -87,13 +452,9 @@ function ShopSelectorPage() {
       const shopsData = Array.isArray(response.data) ? response.data : [];
       console.log("Shops data:", shopsData);
 
-      // Debug: Check if storeman data is included
-      shopsData.forEach((shop, index) => {
-        console.log(`Shop ${index}:`, shop);
-        console.log(`Shop ${index} storeman:`, shop.storeman);
-      });
-
       setShops(shopsData);
+      // Set owner ID for reports
+      setOwnerId(owner_id);
     } catch (error) {
       toast.error(error.message); // Show user-friendly error message
       console.error("Failed to fetch shops:", error);
@@ -101,316 +462,162 @@ function ShopSelectorPage() {
       setIsLoading(false);
     }
   };
+  
+  // Fetch reports data
+  const fetchReportsData = async () => {
+    if (!ownerId) return;
+    
+    try {
+      setReportsLoading(true);
+      const response = await ownerReportsApi.getOverview(ownerId, 'all_time');
+      if (response && response.data) {
+        setReportsData(response.data);
+        console.log('Reports data:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      toast.error('Failed to load reports. Please try again.');
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+  
+  // Fetch revenue data
+  const fetchRevenueData = async () => {
+    if (!ownerId) return;
+    
+    try {
+      setRevenueLoading(true);
+      const response = await ownerReportsApi.getRevenue(ownerId, 'all_time');
+      if (response && response.data) {
+        setRevenueData(response.data);
+        console.log('Revenue data:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching revenue:', error);
+      toast.error('Failed to load revenue data. Please try again.');
+    } finally {
+      setRevenueLoading(false);
+    }
+  };
+  
+  // Fetch sales data
+  const fetchSalesData = async () => {
+    if (!ownerId) return;
+    
+    try {
+      setSalesLoading(true);
+      const response = await ownerReportsApi.getSales(ownerId, 'all_time');
+      if (response && response.data) {
+        setSalesData(response.data);
+        console.log('Sales data:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+      toast.error('Failed to load sales data. Please try again.');
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+  
+  // Export handlers
+  const handleExportExcel = async () => {
+    if (!ownerId) return;
+    try {
+      await ownerReportsApi.exportToExcel(ownerId, 'all_time');
+      toast.success('✅ Excel report downloaded successfully!');
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      toast.error('❌ Failed to export Excel. Please try again.');
+    }
+  };
+  
+  const handleExportPDF = async () => {
+    if (!ownerId) return;
+    try {
+      await ownerReportsApi.exportToPDF(ownerId, 'all_time');
+      toast.success('✅ PDF report downloaded successfully!');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('❌ Failed to export PDF. Please try again.');
+    }
+  };
 
-  const handleSelectShop = (shop, isStoremanLogin = true) => {
+  const handleSelectShop = (shop) => {
     console.log("🔍 Shop selected:", shop);
-    console.log("🔍 Storeman login requested:", isStoremanLogin);
 
-    if (isStoremanLogin && shop.storeman && shop.storeman.mobile) {
-      console.log("✅ Opening OTP modal for storeman:", shop.storeman.mobile);
-      // Open enhanced OTP login modal for storeman
-      setOtpModal({
-        isOpen: true,
-        shop: shop,
-        mobile: shop.storeman.mobile,
-        otp: '',
-        step: 'mobile'
-      });
-      console.log("✅ Modal state updated");
-    } else if (shop.storeman && shop.storeman.mobile) {
-      console.log("✅ Opening OTP modal for storeman:", shop.storeman.mobile);
-      // Open enhanced OTP login modal for storeman
-      setOtpModal({
-        isOpen: true,
-        shop: shop,
-        mobile: shop.storeman.mobile,
-        otp: '',
-        step: 'mobile' 
-      });
-      console.log("✅ Modal state updated");
-    } else { 
-      console.log("❌ No storeman found for shop");
-      // If no storeman, show message that storeman is required
-      toast.info("This shop requires a storeman for access. Please contact your administrator to assign a storeman.");
-    }
-  };
+    // Store shop authentication data directly
+    localStorage.setItem("selectedStoreId", String(shop.id));
+    localStorage.setItem("store_name", shop.name || 'Store');
 
-  const handleOtpRequest = async () => {
-    console.log("Storeman OTP Request - Mobile:", otpModal.mobile);
-    if (!otpModal.mobile) {
-      toast.error("Mobile number is required");
-      return;
-    }
+    // Show welcome message
+    toast.success(`Accessing ${shop.name} dashboard...`);
 
-    // Basic mobile number validation
-    const mobileRegex = /^[6-9]\d{9}$/;
-    if (!mobileRegex.test(otpModal.mobile)) {
-      toast.error("Please enter a valid 10-digit mobile number");
-      return;
-    }
+    console.log("Shop authentication successful, navigating to dashboard...");
 
-    setIsOtpLoading(true);
-    try {
-      console.log("Sending storeman OTP request...");
-      const response = await authService.requestOTP(otpModal.mobile, 'storeman');
-      console.log("Storeman OTP request successful, changing to OTP step");
-
-      if (!response) {
-        throw new Error("Invalid response from server");
-      }
-
-      setOtpModal(prev => ({ ...prev, step: 'otp' }));
-      toast.success("OTP sent to your mobile number for storeman verification");
-    } catch (error) {
-      console.error("Storeman OTP request failed:", error);
-      toast.error(error.message || "Failed to send storeman OTP. Please try again.");
-    } finally {
-      setIsOtpLoading(false);
-    }
-  };
-
-  const handleOtpVerify = async () => {
-    console.log("OTP Verify - Mobile:", otpModal.mobile, "OTP:", otpModal.otp);
-
-    // Validation
-    if (!otpModal.otp || otpModal.otp.length !== 6) {
-      toast.error("Please enter a valid 6-digit OTP");
-      return;
-    }
-
-    if (!otpModal.mobile) {
-      toast.error("Mobile number is missing. Please try again.");
-      return;
-    }
-
-    if (!otpModal.shop || !otpModal.shop.id) {
-      toast.error("Shop information is missing. Please try again.");
-      return;
-    }
-
-    setIsOtpLoading(true);
-    try {
-      console.log("Verifying OTP for storeman...");
-      const response = await authService.verifyOTP(otpModal.mobile, otpModal.otp, 'storeman');
-      console.log("Storeman OTP verification response:", response);
-
-      // Validate response structure
-      if (!response) {
-        throw new Error("Invalid response from server");
-      }
-
-      // Get storeman data from the shop's storeman object
-      const storemanData = otpModal.shop.storeman;
-      if (!storemanData || !storemanData.id) {
-        throw new Error("Storeman credentials not found for this shop");
-      }
-
-      // Ensure the storeman is associated with the correct shop
-      if (storemanData.shop_id && storemanData.shop_id !== otpModal.shop.id) {
-        console.warn("Storeman shop ID mismatch:", storemanData.shop_id, otpModal.shop.id);
-      }
-
-      // Store storeman authentication data
-      localStorage.setItem("selectedStoreId", String(otpModal.shop.id));
-      localStorage.setItem("storeman_id", storemanData.id);
-      localStorage.setItem("storeman_name", storemanData.name || 'Store Manager');
-      localStorage.setItem("storeman_mobile", otpModal.mobile);
-      localStorage.setItem("auth_type", "storeman");
-      localStorage.setItem("store_name", otpModal.shop.name || 'Store');
-
-      // Show welcome message
-      const storeName = otpModal.shop.name || 'the store';
-      toast.success(`Welcome back, ${storemanData.name || 'Store Manager'}!`);
-
-      // Close modal and navigate
-      closeOtpModal();
-      console.log("Storeman authentication successful, navigating to dashboard...");
-      
-      // Force a page reload to ensure all context is properly initialized
-      window.location.href = '/dashboard';
-    } catch (error) {
-      console.error("Storeman OTP verification failed:", error);
-
-      // Provide specific error messages for storeman authentication
-      let errorMessage = "Storeman authentication failed. Please try again.";
-
-      if (error.message) {
-        if (error.message.includes("Invalid OTP")) {
-          errorMessage = "Invalid OTP. Please check and try again.";
-        } else if (error.message.includes("expired")) {
-          errorMessage = "OTP has expired. Please request a new one.";
-        } else if (error.message.includes("Storeman") || error.message.includes("storeman")) {
-          errorMessage = error.message; // Use the specific storeman error message
-        } else if (error.message.includes("network") || error.message.includes("fetch")) {
-          errorMessage = "Network error. Please check your connection and try again.";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
-      toast.error(errorMessage);
-    } finally {
-      setIsOtpLoading(false);
-    }
-  };
-
-  const closeOtpModal = () => {
-    console.log("🔒 Closing OTP modal");
-    setOtpModal({ isOpen: false, shop: null, mobile: '', otp: '', step: 'mobile' });
-  };
-
-  const goBackToMobileStep = () => {
-    console.log("🔄 Going back to mobile step");
-    setOtpModal(prev => ({ ...prev, step: 'mobile', otp: '' }));
-  };
-
-  const handleUpdateShopStatus = async (shopId, newStatus) => {
-    try {
-      await authService.updateShopStatus(shopId, { status: newStatus });
-      toast.success(`Shop status updated to ${newStatus}`);
-      fetchShops();
-      setSelectedShopForStatus(null);
-    } catch (error) {
-      toast.error(error.message);
-      console.error("Failed to update shop status:", error);
-    }
-  };
-
-  const handleShopStatusClick = (shop) => {
-    setSelectedShopForStatus(shop);
-  };
-
-  const handleAddShop = async (e) => {
-    e.preventDefault();
-    const formData = {
-      name: e.target.name.value,
-      location: e.target.address.value,
-      owner_id: parseInt(owner_id),
-      storeman_name: e.target.storeman_name.value,
-      storeman_mobile: e.target.storeman_mobile.value
-    };
-
-    // Basic validation
-    if (!formData.name || !formData.location || !formData.storeman_name || !formData.storeman_mobile) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    // Mobile number validation
-    const mobileRegex = /^[6-9]\d{9}$/;
-    if (!mobileRegex.test(formData.storeman_mobile)) {
-      toast.error("Please enter a valid 10-digit mobile number");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await authService.createShop(formData);
-      toast.success("Shop added successfully!");
-      fetchShops();
-      setIsAddShopModalOpen(false);
-      e.target.reset();
-    } catch (error) {
-      console.error("Failed to create shop:", error);
-      toast.error(error.message || "Failed to add shop. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditShop = (shop) => {
-    setEditingShop(shop.id);
-    setShopFormData({
-      name: shop.name,
-      location: shop.location || '',
-      storeman_name: shop.storeman?.name || '',
-      storeman_mobile: shop.storeman?.mobile || ''
-    });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingShop(null);
-    setShopFormData({ 
-      name: '', 
-      location: '',
-      storeman_name: '',
-      storeman_mobile: ''
-    });
-  };
-
-  const handleUpdateShop = async (e, shopId) => {
-    e.preventDefault();
-    try {
-      const response = await authService.updateShop(shopId, {
-        ...shopFormData,
-        owner_id: parseInt(owner_id),
-        storeman: {
-          name: shopFormData.storeman_name,
-          mobile: shopFormData.storeman_mobile
-        }
-      });
-      toast.success(response.message);
-      setEditingShop(null);
-      fetchShops();
-    } catch (error) {
-      toast.error(error.message);
-      console.error("Failed to update shop:", error);
-    }
-  };
-
-  const handleDeleteShop = async (shopId, e) => {
-    e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this shop? This action cannot be undone.")) {
-      try {
-        const response = await authService.deleteShop(shopId);
-        toast.success(response.message);
-        fetchShops();
-      } catch (error) {
-        toast.error(error.message);
-        console.error("Failed to delete shop:", error);
-      }
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Validation for storeman_name (only alphabets and spaces)
-    if (name === 'storeman_name') {
-      // Only allow alphabets and spaces
-      const regex = /^[A-Za-z\s]*$/;
-      if (value === '' || regex.test(value)) {
-        setShopFormData(prev => ({
-          ...prev,
-          [name]: value
-        }));
-      }
-      return;
-    }
-    
-    // Validation for storeman_mobile (only numbers, max 10 digits)
-    if (name === 'storeman_mobile') {
-      // Only allow numbers and limit to 10 digits
-      const regex = /^\d{0,10}$/;
-      if (regex.test(value)) {
-        setShopFormData(prev => ({
-          ...prev,
-          [name]: value
-        }));
-      }
-      return;
-    }
-    
-    // For all other fields
-    setShopFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    // Navigate directly to dashboard
+    navigate('/dashboard');
   };
 
   const handleLogout = () => {
     localStorage.clear();
     navigate("/owner-login");
+  };
+
+  const handleSettingsChange = (category, setting, value) => {
+    setSettings(prevSettings => ({
+      ...prevSettings,
+      [category]: {
+        ...prevSettings[category],
+        [setting]: value
+      }
+    }));
+
+    // Show success message
+    toast.success(`${setting.charAt(0).toUpperCase() + setting.slice(1)} updated successfully`);
+  };
+
+  const handleSaveSettings = () => {
+    // Save settings to localStorage or API
+    localStorage.setItem('shopSelectorSettings', JSON.stringify(settings));
+    toast.success('All settings saved successfully!');
+  };
+
+  const handleResetSettings = () => {
+    const defaultSettings = {
+      dashboard: {
+        defaultView: 'shops',
+        showWelcomeSection: true,
+        compactMode: false,
+        autoRefresh: true,
+        refreshInterval: 300,
+      },
+      notifications: {
+        emailAlerts: true,
+        pushNotifications: false,
+        shopUpdates: true,
+        revenueAlerts: true,
+        inventoryAlerts: false,
+        orderNotifications: true,
+      },
+      appearance: {
+        theme: 'light',
+        sidebarCollapsed: false,
+        showAnimations: true,
+        fontSize: 'medium',
+        language: 'en',
+      },
+      shopManagement: {
+        autoBackup: true,
+        exportFormat: 'excel',
+        dataRetention: 365,
+        multiShopView: false,
+      }
+    };
+
+    setSettings(defaultSettings);
+    localStorage.setItem('shopSelectorSettings', JSON.stringify(defaultSettings));
+    toast.success('Settings reset to defaults!');
   };
 
   const handleNavClick = (page) => {
@@ -429,75 +636,108 @@ function ShopSelectorPage() {
       {/* Header */}
       <header className="top-header">
         <div className="header-left">
-          <button 
+          <button
             className="menu-toggle"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            aria-label="Toggle sidebar"
           >
             <i className={`fas fa-${isSidebarOpen ? 'times' : 'bars'}`}></i>
           </button>
-          <h1>StoreHub</h1>
+          <div className="header-brand">
+            <div className="brand-logo">
+              <i className="fas fa-store-alt"></i>
+            </div>
+            
+          </div>
         </div>
+        
         <div className="header-right">
-          <span className="user-info">
-            <i className="fas fa-user-circle"></i>
-            <span className="user-name">{ownerName}</span>
-          </span>
-          <button className="logout-btn" onClick={handleLogout}>
-            <i className="fas fa-sign-out-alt"></i>
-            <span className="btn-text">Logout</span>
-          </button>
+          <div className="header-owner" aria-label="Signed in owner">
+            <div className="owner-avatar">
+              <i className="fas fa-user-circle"></i>
+            </div>
+            <div className="owner-info">
+              <span className="owner-name">{ownerName || 'Shop Owner'}</span>
+              <span className="owner-role">Account Owner</span>
+            </div>
+          </div>
         </div>
       </header>
 
       <div className="main-container">
         {/* Sidebar */}
         <aside className={`sidebar ${!isSidebarOpen ? 'hidden' : ''}`}>
+          <div className="sidebar-header">
+            <div className="sidebar-brand">
+              <div className="brand-icon">
+                <i className="fas fa-store-alt"></i>
+              </div>
+              <div className="brand-info">
+                <h3>StoreHub</h3>
+                <span>Shop Selection</span>
+              </div>
+            </div>
+          </div>
           <nav className="sidebar-nav">
-            <button 
-              className={activePage === "shops" ? "active" : ""}
-              onClick={() => handleNavClick("shops")}
-            >
-              <i className="fas fa-store"></i>
-              <span>My Shops</span>
-            </button>
-            <button 
-              className={activePage === "add-shop" ? "active" : ""}
-              onClick={() => handleNavClick("add-shop")}
-            >
-              <i className="fas fa-plus-circle"></i>
-              <span>Add Shop</span>
-            </button>
-            <button 
-              className={activePage === "revenue" ? "active" : ""}
-              onClick={() => handleNavClick("revenue")}
-            >
-              <i className="fas fa-chart-line"></i>
-              <span>Revenue</span>
-            </button>
-            <button 
-              className={activePage === "sales" ? "active" : ""}
-              onClick={() => handleNavClick("sales")}
-            >
-              <i className="fas fa-shopping-cart"></i>
-              <span>Sales</span>
-            </button>
-            <button 
-              className={activePage === "inventory" ? "active" : ""}
-              onClick={() => handleNavClick("inventory")}
-            >
-              <i className="fas fa-boxes"></i>
-              <span>Inventory</span>
-            </button>
-            {isCompanyAdmin && (
-              <button
-                className={activePage === "admin" ? "active" : ""}
-                onClick={() => handleNavClick("admin")}
-              >
-                <i className="fas fa-cog"></i>
-                <span>Admin</span>
-              </button>
-            )}
+            <div className="nav-section">
+              <span className="nav-section-title">Management</span>
+              <ul>
+                <li
+                  className={activePage === "shops" ? "active" : ""}
+                  onClick={() => handleNavClick("shops")}
+                >
+                  <i className="fas fa-store"></i>
+                  <span>My Shops</span>
+                </li>
+              </ul>
+            </div>
+            <div className="nav-section">
+              <span className="nav-section-title">Analytics</span>
+              <ul>
+                <li
+                  className={activePage === "revenue" ? "active" : ""}
+                  onClick={() => handleNavClick("revenue")}
+                >
+                  <i className="fas fa-chart-line"></i>
+                  <span>Revenue</span>
+                </li>
+                <li
+                  className={activePage === "sales" ? "active" : ""}
+                  onClick={() => handleNavClick("sales")}
+                >
+                  <i className="fas fa-shopping-cart"></i>
+                  <span>Sales</span>
+                </li>
+                <li
+                  className={activePage === "reports" ? "active" : ""}
+                  onClick={() => handleNavClick("reports")}
+                >
+                  <i className="fas fa-boxes"></i>
+                  <span>Reports</span>
+                </li>
+              </ul>
+            </div>
+            <div className="nav-section">
+              <span className="nav-section-title">Settings</span>
+              <ul>
+                <li
+                  className={activePage === "settings" ? "active" : ""}
+                  onClick={() => handleNavClick("settings")}
+                >
+                  <i className="fas fa-cog"></i>
+                  <span>Settings</span>
+                </li>
+              </ul>
+            </div>
           </nav>
+
+          <div className="sidebar-footer">
+            <button className="sidebar-logout" onClick={handleLogout}>
+              <i className="fas fa-sign-out-alt"></i>
+              <span>Logout</span>
+            </button>
+          </div>
+
         </aside>
 
         {/* Main Content */}
@@ -514,14 +754,6 @@ function ShopSelectorPage() {
                   <span className="stat-number">{shops.length}</span>
                   <span className="stat-label">Total Shops</span>
                 </div>
-                <div className="stat-card">
-                  <span className="stat-number">--</span>
-                  <span className="stat-label">Active Today</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-number">--</span>
-                  <span className="stat-label">This Month</span>
-                </div>
               </div>
             </div>
           </div>
@@ -534,28 +766,6 @@ function ShopSelectorPage() {
                     <i className="fas fa-store"></i>
                     Your Shops
                   </h2>
-                  {/* <button 
-                    className="add-shop-button"
-                    onClick={() => {
-                      setFormStep(1);
-                      setFormData({
-                        name: '',
-                        location: '',
-                        storeman_name: '',
-                        storeman_mobile: '',
-                        shopType: 'retail',
-                        businessHours: {
-                          open: '09:00',
-                          close: '21:00',
-                          days: [1, 2, 3, 4, 5, 6]
-                        },
-                        additionalInfo: ''
-                      });
-                      setIsAddShopModalOpen(true);
-                    }}
-                  >
-                    <FaPlus /> Add New Shop
-                  </button> */}
                 </div>
               
               {isLoading ? (
@@ -577,9 +787,6 @@ function ShopSelectorPage() {
                         <div className="skeleton-text">
                           <div className="skeleton-pulse"></div>
                         </div>
-                        <div className="skeleton-storeman">
-                          <div className="skeleton-pulse"></div>
-                        </div>
                         <div className="shop-actions">
                           <div className="skeleton-btn">
                             <div className="skeleton-pulse"></div>
@@ -599,136 +806,38 @@ function ShopSelectorPage() {
                 <div className="empty-state">
                   <i className="fas fa-store-alt-slash"></i>
                   <h3>No Shops Found</h3>
-                  <p>Start by adding your first shop!</p>
-                  <button onClick={() => handleNavClick("add-shop")}>
-                    <i className="fas fa-plus"></i>
-                    Add New Shop
-                  </button>
+                  <p>You don't have any shops yet.</p>
                 </div>
               ) : (
                 <div className="shop-cards">
                   {shops.map((shop) => (
                     <div key={shop.id} className="shop-card">
-                      {editingShop === shop.id ? (
-                        <div className="shop-edit-form">
-                          <input
-                            type="text"
-                            name="name"
-                            value={shopFormData.name}
-                            onChange={handleInputChange}
-                            className="form-input"
-                            placeholder="Shop Name"
-                          />
-                          <input
-                            type="text"
-                            name="location"
-                            value={shopFormData.location}
-                            onChange={handleInputChange}
-                            className="form-input"
-                            placeholder="Location"
-                          />
-                          <input
-                            type="text"
-                            name="storeman_name"
-                            value={shopFormData.storeman_name}
-                            onChange={handleInputChange}
-                            className="form-input"
-                            placeholder="Storeman Name"
-                          />
-                          <input
-                            type="text"
-                            name="storeman_mobile"
-                            value={shopFormData.storeman_mobile}
-                            onChange={handleInputChange}
-                            className="form-input"
-                            placeholder="Storeman Mobile Number"
-                            maxLength="10"
-                          />
-                          <div className="form-actions">
-                            <button 
-                              type="button" 
-                              className="btn-save"
-                              onClick={(e) => handleUpdateShop(e, shop.id)}
-                            >
-                              <FaSave /> Save
-                            </button>
-                            <button 
-                              type="button" 
-                              className="btn-cancel"
-                              onClick={handleCancelEdit}
-                            >
-                              <FaTimes /> Cancel
-                            </button>
-                          </div>
+                      <div className="shop-card-header">
+                        <div className="shop-icon">
+                          <i className="fas fa-store"></i>
                         </div>
-                      ) : (
-                        <>
-                          <div className="shop-card-header">
-                            <div className="shop-icon">
-                              <i className="fas fa-store"></i>
-                            </div>
-                            <span className={`shop-status-indicator ${shop.status}`}>
-                              <i className={`fas fa-${shop.status === 'active' ? 'check-circle' : shop.status === 'inactive' ? 'pause-circle' : 'times-circle'}`}></i>
-                              {shop.status}
-                            </span>
-                          </div>
-                          <div className="shop-content">
-                            <h3>{shop.name}</h3>
-                            <p>{shop.location}</p>
-                            {shop.storeman && (
-                              <p className="storeman-info">
-                                <i className="fas fa-user-tie"></i>
-                                Storeman: {shop.storeman.name}
-                              </p>
-                            )}
-                            <div className="shop-actions">
-                              <button 
-                                className="btn-edit"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditShop(shop);
-                                }}
-                                title="Edit shop"
-                              >
-                                <FaEdit />
-                              </button>
-                              <button 
-                                className="btn-delete"
-                                onClick={(e) => handleDeleteShop(shop.id, e)}
-                                title="Delete shop"
-                              >
-                                <FaTrash />
-                              </button>
-                              {/* {shop.storeman && (
-                                <button
-                                  className="btn-storeman-login"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log("🔑 Storeman login requested for shop:", shop.name);
-                                    handleSelectShop(shop); // Will trigger storeman login (default behavior)
-                                  }}
-                                  title="Login as storeman for additional features"
-                                >
-                                  <i className="fas fa-user-tie"></i>
-                                </button>
-                              )} */}
-                            </div>
-                            <button
-                              className="view-dashboard"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                console.log("🔘 Access Shop button clicked for shop:", shop.name);
-                                handleSelectShop(shop); // This will trigger storeman login by default
-                              }}
-                              disabled={shop.status !== 'active' || !shop.storeman}
-                              title={!shop.storeman ? "Storeman required for access" : shop.status !== 'active' ? "Shop is not active" : "Access shop via storeman login"}
-                            >
-                              {shop.storeman ? 'Access Shop' : 'Storeman Required'}
-                              <i className="fas fa-arrow-right"></i>
-                            </button>
-                          </div>
-                        </>
-                      )}
+                        <span className={`shop-status-indicator ${shop.status}`}>
+                          <i className={`fas fa-${shop.status === 'active' ? 'check-circle' : shop.status === 'inactive' ? 'pause-circle' : 'times-circle'}`}></i>
+                          {shop.status}
+                        </span>
+                      </div>
+                      <div className="shop-content">
+                        <h3>{shop.name}</h3>
+                        <p>{shop.location}</p>
+                        <button
+                          className="view-dashboard"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log("🔘 Access Shop button clicked for shop:", shop.name);
+                            handleSelectShop(shop);
+                          }}
+                          disabled={shop.status !== 'active'}
+                          title={shop.status !== 'active' ? "Shop is not active" : "Access shop dashboard"}
+                        >
+                          Access Dashboard
+                          <i className="fas fa-arrow-right"></i>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -737,287 +846,914 @@ function ShopSelectorPage() {
             </div>
           )}
 
-          {/* Test Modal Button - Remove in production
-          <button
-            onClick={() => {
-              console.log("🧪 Test modal button clicked");
-              setOtpModal({
-                isOpen: true,
-                shop: { name: 'Test Shop', location: 'Test Location', status: 'active' },
-                mobile: '1234567890',
-                otp: '',
-                step: 'mobile'
-              });
-            }}
-            style={{
-              position: 'fixed',
-              bottom: '20px',
-              left: '20px',
-              zIndex: 9999,
-              padding: '10px 20px',
-              background: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            🧪 Test Modal
-          </button> */}
-
-          {activePage === "add-shop" && (
-            <div className="add-shop-form">
-              <h2>
-                <i className="fas fa-plus-circle"></i>
-                Add New Shop
-              </h2>
-              <p className="form-description">All shops require a storeman for access management.</p>
-              <form onSubmit={handleAddShop}>
-                <div className="form-group">
-                  <label>
+          {activePage === "revenue" && (
+            <section className="revenue-dashboard">
+              <div className="section-header">
+                <div>
+                  <h2>Revenue Intelligence</h2>
+                  <p>
+                    Track performance across all of your stores with a clean, data-driven
+                    overview designed for quick insights.
+                  </p>
+                </div>
+                <div className="section-meta">
+                  <span className="meta-pill">
                     <i className="fas fa-store"></i>
-                    Shop Name<span className="required">*</span>
-                  </label>
-                  <input 
-                    name="name" 
-                    type="text" 
-                    placeholder="Enter shop name"
-                    required 
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    <i className="fas fa-map-marker-alt"></i>
-                    Location<span className="required">*</span>
-                  </label>
-                  <input 
-                    name="address" 
-                    type="text" 
-                    placeholder="Enter shop location"
-                    required 
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    <i className="fas fa-user-tie"></i>
-                    Storeman Name <span className="required">*</span>
-                  </label>
-                  <input
-                    name="storeman_name"
-                    type="text"
-                    placeholder="Enter storeman name"
-                    required
-                    minLength="3"
-                    maxLength="50"
-                    pattern="^[A-Za-z\s]{3,50}$"
-                    title="Please enter a valid name (only alphabets and spaces, 3-50 characters)"
-                    value={shopFormData.storeman_name}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    <i className="fas fa-mobile-alt"></i>
-                    Storeman Mobile <span className="required">*</span>
-                  </label>
-                  <input
-                    name="storeman_mobile"
-                    type="tel"
-                    placeholder="Enter storeman mobile number"
-                    required
-                    minLength="10"
-                    maxLength="10"
-                    pattern="^[6-9]\d{9}$"
-                    title="Please enter a valid 10-digit mobile number"
-                    value={shopFormData.storeman_mobile}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="form-actions">
-                  <button type="submit" className="submit-btn">
-                    Create Shop
-                  </button>
-                  <button 
-                    type="button" 
-                    className="cancel-btn"
-                    onClick={() => handleNavClick("shops")}
+                    {revenueMetrics.shopsCount} Stores
+                  </span>
+                  <span className="meta-pill">
+                    <i className="fas fa-sync-alt"></i>
+                    Updated {new Date().toLocaleDateString()}
+                  </span>
+                  <button
+                    className="btn-refresh"
+                    onClick={fetchRevenueData}
+                    disabled={revenueLoading}
+                    title="Refresh revenue data"
                   >
-                    <i className="fas fa-times"></i>
-                    Cancel
+                    <i className={`fas fa-sync-alt ${revenueLoading ? 'fa-spin' : ''}`}></i>
+                    {revenueLoading ? 'Loading...' : 'Refresh Data'}
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+              
+              {revenueLoading && !revenueData ? (
+                <div className="loading-state">
+                  <i className="fas fa-spinner fa-spin"></i>
+                  <p>Loading revenue data...</p>
+                </div>
+              ) : (
+                <>
+
+              <div className="revenue-summary-grid">
+                <div className="summary-card highlight">
+                  <span className="summary-label">Total Revenue</span>
+                  <span className="summary-value">
+                    {formatCurrency(revenueMetrics.totalRevenue)}
+                  </span>
+                  <span className="summary-meta">
+                    Across {revenueMetrics.shopsCount || 0} shops
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Current Month</span>
+                  <span className="summary-value">
+                    {formatCurrency(revenueMetrics.monthlyRevenue)}
+                  </span>
+                  <span className={`summary-trend ${revenueMetrics.growthPercent >= 0 ? "up" : "down"}`}>
+                    <i className={`fas fa-arrow-${revenueMetrics.growthPercent >= 0 ? "up" : "down"}`}></i>
+                    {Math.abs(revenueMetrics.growthPercent || 0).toFixed(1)}%
+                    <span className="trend-meta">vs previous month</span>
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Average per Shop</span>
+                  <span className="summary-value">
+                    {formatCurrency(revenueMetrics.averagePerShop)}
+                  </span>
+                  <span className="summary-meta">
+                    {revenueMetrics.activeShops} active locations
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Performance Health</span>
+                  <span className="summary-value">
+                    {revenueMetrics.performanceAlerts.length === 0 ? "Stable" : "Attention"}
+                  </span>
+                  <span className="summary-meta">
+                    {revenueMetrics.performanceAlerts.length === 0
+                      ? "No critical alerts"
+                      : `${revenueMetrics.performanceAlerts.length} shop(s) below target`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="revenue-content-grid single-column">
+                <div className="revenue-card top-performers">
+                  <div className="card-header">
+                    <h3>Top Performing Shops</h3>
+                    <span className="card-subtitle">Ranking by lifetime revenue</span>
+                  </div>
+                  {revenueMetrics.topPerformers.length === 0 ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-chart-line"></i>
+                      <h4>No revenue data</h4>
+                      <p>Data will appear here once your shops report earnings.</p>
+                    </div>
+                  ) : (
+                    <ul className="performer-list">
+                      {revenueMetrics.topPerformers.map((shop, index) => {
+                        const maxRevenue = revenueMetrics.topPerformers[0]?.totalRevenue || 1;
+                        const progress = Math.min(
+                          100,
+                          Math.round((shop.totalRevenue / maxRevenue) * 100)
+                        );
+                        return (
+                          <li key={shop.id ?? index}>
+                            <div className="performer-rank">#{index + 1}</div>
+                            <div className="performer-info">
+                              <div className="performer-name">{shop.name}</div>
+                              <div className="performer-meta">
+                                <span>{shop.location}</span>
+                                <span>{formatCurrency(shop.totalRevenue)}</span>
+                              </div>
+                              <div className="progress-track">
+                                <div
+                                  className="progress-bar"
+                                  style={{ width: `${progress}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                            <span className={`status-pill ${shop.status}`}>
+                              {shop.status}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="revenue-card revenue-alerts">
+                  <div className="card-header">
+                    <h3>Insights & Alerts</h3>
+                    <span className="card-subtitle">
+                      Highlights to help you take the right next steps
+                    </span>
+                  </div>
+                  {revenueMetrics.performanceAlerts.length === 0 ? (
+                    <div className="insight-list">
+                      <div className="insight-item positive">
+                        <i className="fas fa-check-circle"></i>
+                        <div>
+                          <h4>All shops on track</h4>
+                          <p>Revenue levels look healthy across your network.</p>
+                        </div>
+                      </div>
+                      <div className="insight-item neutral">
+                        <i className="fas fa-lightbulb"></i>
+                        <div>
+                          <h4>Monitor momentum</h4>
+                          <p>
+                            Keep tracking monthly trends to spot emerging leaders early.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="insight-list">
+                      {revenueMetrics.performanceAlerts.map((alert, index) => (
+                        <div key={alert.id ?? index} className="insight-item warning">
+                          <i className="fas fa-exclamation-triangle"></i>
+                          <div>
+                            <h4>{alert.name}</h4>
+                            <p>{alert.message}</p>
+                            <div className="insight-meta">
+                              <span>Monthly: {formatCurrency(alert.monthlyRevenue)}</span>
+                              <span>Trend: {alert.trend.toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              </>
+              )}
+            </section>
           )}
+
+          {activePage === "sales" && (
+            <section className="sales-dashboard">
+              <div className="section-header">
+                <div>
+                  <h2>Sales Performance</h2>
+                  <p>
+                    Monitor product sales across all stores with detailed insights into
+                    top performers, categories, and recent orders.
+                  </p>
+                </div>
+                <div className="section-meta">
+                  <span className="meta-pill">
+                    <i className="fas fa-box"></i>
+                    {salesMetrics.productsCount} Products
+                  </span>
+                  <span className="meta-pill">
+                    <i className="fas fa-tags"></i>
+                    {salesMetrics.categoriesCount} Categories
+                  </span>
+                  <span className="meta-pill">
+                    <i className="fas fa-sync-alt"></i>
+                    Updated {new Date().toLocaleDateString()}
+                  </span>
+                  <button
+                    className="btn-refresh"
+                    onClick={fetchSalesData}
+                    disabled={salesLoading}
+                    title="Refresh sales data"
+                  >
+                    <i className={`fas fa-sync-alt ${salesLoading ? 'fa-spin' : ''}`}></i>
+                    {salesLoading ? 'Loading...' : 'Refresh Data'}
+                  </button>
+                </div>
+              </div>
+              
+              {salesLoading && !salesData ? (
+                <div className="loading-state">
+                  <i className="fas fa-spinner fa-spin"></i>
+                  <p>Loading sales data...</p>
+                </div>
+              ) : (
+                <>
+
+              <div className="sales-summary-grid">
+                <div className="summary-card highlight">
+                  <span className="summary-label">Total Units Sold</span>
+                  <span className="summary-value">
+                    {salesMetrics.totalSales}
+                  </span>
+                  <span className="summary-meta">
+                    Across all products
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Sales Revenue</span>
+                  <span className="summary-value">
+                    {formatCurrency(salesMetrics.totalRevenue)}
+                  </span>
+                  <span className="summary-meta">
+                    From product sales
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Average Sale Value</span>
+                  <span className="summary-value">
+                    {formatCurrency(salesMetrics.averageSaleValue)}
+                  </span>
+                  <span className="summary-meta">
+                    Per unit sold
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Active Categories</span>
+                  <span className="summary-value">
+                    {salesMetrics.categoriesCount}
+                  </span>
+                  <span className="summary-meta">
+                    Product categories
+                  </span>
+                </div>
+              </div>
+
+              <div className="sales-content-grid">
+                <div className="sales-card top-products">
+                  <div className="card-header">
+                    <h3>Top Selling Products</h3>
+                    <span className="card-subtitle">Most popular items across all shops</span>
+                  </div>
+                  {salesMetrics.topProducts.length === 0 ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-shopping-cart"></i>
+                      <h4>No product data</h4>
+                      <p>Product sales information will appear here once available.</p>
+                    </div>
+                  ) : (
+                    <ul className="product-list">
+                      {salesMetrics.topProducts.map((product, index) => {
+                        const maxSales = salesMetrics.topProducts[0]?.sales_count || 1;
+                        const progress = Math.min(
+                          100,
+                          Math.round((product.sales_count / maxSales) * 100)
+                        );
+                        return (
+                          <li key={product.id ?? index}>
+                            <div className="product-rank">#{index + 1}</div>
+                            <div className="product-info">
+                              <div className="product-name">{product.name}</div>
+                              <div className="product-meta">
+                                <span className="product-category">{product.category}</span>
+                                <span className="product-sales">{product.sales_count} units</span>
+                                <span className="product-revenue">{formatCurrency(product.revenue)}</span>
+                              </div>
+                              <div className="progress-track">
+                                <div
+                                  className="progress-bar"
+                                  style={{ width: `${progress}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                            <div className="product-shop">
+                              <span className="shop-badge">{product.shop_name}</span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="sales-card recent-orders">
+                  <div className="card-header">
+                    <h3>Recent Orders</h3>
+                    <span className="card-subtitle">Latest customer purchases</span>
+                  </div>
+                  {salesMetrics.recentOrders.length === 0 ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-clock"></i>
+                      <h4>No recent orders</h4>
+                      <p>Order history will appear here as customers make purchases.</p>
+                    </div>
+                  ) : (
+                    <div className="orders-list">
+                      {salesMetrics.recentOrders.map((order) => (
+                        <div key={order.id} className="order-item">
+                          <div className="order-header">
+                            <div className="customer-info">
+                              <span className="customer-name">{order.customer_name}</span>
+                              <span className="order-time">
+                                {new Date(order.date).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="order-details">
+                            <span className="product-name">{order.product_name}</span>
+                            <span className="shop-name">{order.shop_name}</span>
+                            <span className="order-amount">{formatCurrency(order.amount)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="sales-card category-breakdown">
+                  <div className="card-header">
+                    <h3>Category Performance</h3>
+                    <span className="card-subtitle">Sales breakdown by product category</span>
+                  </div>
+                  {Object.keys(salesMetrics.categoryBreakdown).length === 0 ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-chart-pie"></i>
+                      <h4>No category data</h4>
+                      <p>Category information will appear as products are categorized.</p>
+                    </div>
+                  ) : (
+                    <div className="category-grid">
+                      {Object.entries(salesMetrics.categoryBreakdown).map(([category, data]) => {
+                        const totalSales = Object.values(salesMetrics.categoryBreakdown)
+                          .reduce((sum, cat) => sum + cat.total_sales, 0);
+                        const percentage = totalSales > 0 ? (data.total_sales / totalSales) * 100 : 0;
+
+                        return (
+                          <div key={category} className="category-card">
+                            <div className="category-header">
+                              <h4>{category}</h4>
+                              <span className="category-percentage">{percentage.toFixed(1)}%</span>
+                            </div>
+                            <div className="category-metrics">
+                              <div className="metric">
+                                <span className="metric-label">Units</span>
+                                <span className="metric-value">{data.total_sales}</span>
+                              </div>
+                              <div className="metric">
+                                <span className="metric-label">Revenue</span>
+                                <span className="metric-value">{formatCurrency(data.total_revenue)}</span>
+                              </div>
+                              <div className="metric">
+                                <span className="metric-label">Products</span>
+                                <span className="metric-value">{data.products}</span>
+                              </div>
+                            </div>
+                            <div className="category-bar">
+                              <div
+                                className="category-bar-fill"
+                                style={{ width: `${percentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+              </>
+              )}
+            </section>
+          )}
+
+          {activePage === "reports" && (
+            <section className="reports-dashboard">
+              <div className="section-header">
+                <div>
+                  <h2>Comprehensive Reports</h2>
+                  <p>
+                    Detailed analytics and performance reports across all your shops
+                  </p>
+                </div>
+                <div className="section-meta">
+                  <span className="meta-pill">
+                    <i className="fas fa-store"></i>
+                    {revenueMetrics.shopsCount} Stores
+                  </span>
+                  <span className="meta-pill">
+                    <i className="fas fa-sync-alt"></i>
+                    Updated {new Date().toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="reports-summary-grid">
+                <div className="summary-card highlight">
+                  <span className="summary-label">Total Performance</span>
+                  <span className="summary-value">
+                    {reportsLoading ? '...' : formatCurrency(reportsData?.summary_stats?.total_revenue || revenueMetrics.totalRevenue)}
+                  </span>
+                  <span className="summary-meta">
+                    Across {reportsData?.summary_stats?.total_shops || revenueMetrics.shopsCount} shops
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Active Shops</span>
+                  <span className="summary-value">
+                    {reportsLoading ? '...' : (reportsData?.summary_stats?.active_shops || revenueMetrics.activeShops)}
+                  </span>
+                  <span className="summary-meta">
+                    {reportsData?.summary_stats?.inactive_shops || (revenueMetrics.shopsCount - revenueMetrics.activeShops)} inactive
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Monthly Growth</span>
+                  <span className="summary-value">
+                    {reportsLoading ? '...' : `${(reportsData?.summary_stats?.growth_percent || revenueMetrics.growthPercent) >= 0 ? '+' : ''}${Math.abs(reportsData?.summary_stats?.growth_percent || revenueMetrics.growthPercent || 0).toFixed(1)}%`}
+                  </span>
+                  <span className="summary-meta">
+                    vs previous month
+                  </span>
+                </div>
+                <div className="summary-card">
+                  <span className="summary-label">Total Orders</span>
+                  <span className="summary-value">
+                    {reportsLoading ? '...' : (reportsData?.summary_stats?.total_orders || salesMetrics.totalSales)}
+                  </span>
+                  <span className="summary-meta">
+                    Across all shops
+                  </span>
+                </div>
+              </div>
+
+              <div className="reports-content-grid">
+                <div className="reports-card shop-performance">
+                  <div className="card-header">
+                    <h3>Shop Performance</h3>
+                    <span className="card-subtitle">Revenue comparison by shop</span>
+                  </div>
+                  {reportsLoading ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-spinner fa-spin"></i>
+                      <h4>Loading shop data...</h4>
+                      <p>Please wait</p>
+                    </div>
+                  ) : (reportsData?.shop_breakdown || normalizedShops).length === 0 ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-chart-line"></i>
+                      <h4>No shop data</h4>
+                      <p>Data will appear when shops are added</p>
+                    </div>
+                  ) : (
+                    <div className="performance-grid">
+                      {(reportsData?.shop_breakdown || normalizedShops).map(shop => (
+                        <div key={shop.shop_id || shop.id} className="performance-card">
+                          <div className="performance-header">
+                            <h4>{shop.shop_name || shop.name}</h4>
+                            <span className={`status-pill ${shop.status}`}>
+                              {shop.status}
+                            </span>
+                          </div>
+                          <div className="performance-metrics">
+                            <div className="metric">
+                              <span>Monthly</span>
+                              <span>{formatCurrency(shop.monthly_revenue || shop.monthlyRevenue)}</span>
+                            </div>
+                            <div className="metric">
+                              <span>Lifetime</span>
+                              <span>{formatCurrency(shop.total_revenue || shop.totalRevenue)}</span>
+                            </div>
+                            <div className="metric">
+                              <span>Trend</span>
+                              <span className={`trend ${shop.trend >= 0 ? 'up' : 'down'}`}>
+                                {shop.trend >= 0 ? '+' : ''}{Math.abs(shop.trend || 0).toFixed(1)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="reports-card recent-activity">
+                  <div className="card-header">
+                    <h3>Recent Orders</h3>
+                    <span className="card-subtitle">Latest orders across shops</span>
+                  </div>
+                  {reportsLoading ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-spinner fa-spin"></i>
+                      <h4>Loading orders...</h4>
+                      <p>Please wait</p>
+                    </div>
+                  ) : (reportsData?.recent_orders || salesMetrics.recentOrders).length === 0 ? (
+                    <div className="empty-state subtle">
+                      <i className="fas fa-clock"></i>
+                      <h4>No recent orders</h4>
+                      <p>Orders will appear as shops process them</p>
+                    </div>
+                  ) : (
+                    <div className="activity-list">
+                      {(reportsData?.recent_orders || salesMetrics.recentOrders).map(order => (
+                        <div key={order.id} className="activity-item">
+                          <div className="activity-icon">
+                            <i className="fas fa-shopping-bag"></i>
+                          </div>
+                          <div className="activity-content">
+                            <div className="activity-meta">
+                              <span>{order.customer_name}</span>
+                              <span>{order.shop_name}</span>
+                              <span>{formatCurrency(order.amount)}</span>
+                            </div>
+                            <div className="activity-details">
+                              <span>{order.product_name}</span>
+                              {order.status && order.status.toLowerCase() !== 'pending' && (
+                                <span className={`status ${order.status}`}>{order.status}</span>
+                              )}
+                            </div>
+                            <div className="activity-time">
+                              {order.date ? new Date(order.date).toLocaleString() : 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="reports-card export-section">
+                  <div className="card-header">
+                    <h3>Export Reports</h3>
+                    <span className="card-subtitle">Generate and download reports</span>
+                  </div>
+                  <div className="export-options">
+                    <button className="export-btn" onClick={handleExportExcel}>
+                      <i className="fas fa-file-excel"></i>
+                      <span>Excel Report</span>
+                    </button>
+                    <button className="export-btn" onClick={handleExportPDF}>
+                      <i className="fas fa-file-pdf"></i>
+                      <span>PDF Summary</span>
+                    </button>
+                    <button className="export-btn" onClick={fetchReportsData}>
+                      <i className="fas fa-sync-alt"></i>
+                      <span>Refresh Data</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activePage === "settings" && (
+            <section className="settings-dashboard">
+              <div className="section-header">
+                <div>
+                  <h2>Settings & Preferences</h2>
+                  <p>
+                    Customize your dashboard experience and manage your shop preferences
+                    with advanced configuration options.
+                  </p>
+                </div>
+                <div className="section-meta">
+                  <span className="meta-pill">
+                    <i className="fas fa-cog"></i>
+                    Advanced Settings
+                  </span>
+                  <span className="meta-pill">
+                    <i className="fas fa-sync-alt"></i>
+                    Auto-save enabled
+                  </span>
+                </div>
+              </div>
+
+              <div className="settings-content-grid">
+                {/* Dashboard Preferences */}
+                <div className="settings-card">
+                  <div className="card-header">
+                    <h3>
+                      <i className="fas fa-tachometer-alt"></i>
+                      Dashboard Preferences
+                    </h3>
+                    <span className="card-subtitle">Customize your dashboard experience</span>
+                  </div>
+                  <div className="settings-group">
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Default View</label>
+                        <span className="setting-description">Choose which page to show when you log in</span>
+                      </div>
+                      <select
+                        className="setting-select"
+                        value={settings.dashboard.defaultView}
+                        onChange={(e) => handleSettingsChange('dashboard', 'defaultView', e.target.value)}
+                      >
+                        <option value="shops">My Shops</option>
+                        <option value="revenue">Revenue</option>
+                        <option value="sales">Sales</option>
+                        <option value="reports">Reports</option>
+                      </select>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Show Welcome Section</label>
+                        <span className="setting-description">Display welcome message and quick stats</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.dashboard.showWelcomeSection}
+                          onChange={(e) => handleSettingsChange('dashboard', 'showWelcomeSection', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Compact Mode</label>
+                        <span className="setting-description">Reduce spacing for more content visibility</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.dashboard.compactMode}
+                          onChange={(e) => handleSettingsChange('dashboard', 'compactMode', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Auto Refresh</label>
+                        <span className="setting-description">Automatically refresh dashboard data</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.dashboard.autoRefresh}
+                          onChange={(e) => handleSettingsChange('dashboard', 'autoRefresh', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notifications */}
+                <div className="settings-card">
+                  <div className="card-header">
+                    <h3>
+                      <i className="fas fa-bell"></i>
+                      Notifications
+                    </h3>
+                    <span className="card-subtitle">Manage your notification preferences</span>
+                  </div>
+                  <div className="settings-group">
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Email Alerts</label>
+                        <span className="setting-description">Receive important updates via email</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.emailAlerts}
+                          onChange={(e) => handleSettingsChange('notifications', 'emailAlerts', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Push Notifications</label>
+                        <span className="setting-description">Browser push notifications for urgent alerts</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.pushNotifications}
+                          onChange={(e) => handleSettingsChange('notifications', 'pushNotifications', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Shop Updates</label>
+                        <span className="setting-description">Notifications for shop status changes</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.shopUpdates}
+                          onChange={(e) => handleSettingsChange('notifications', 'shopUpdates', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Revenue Alerts</label>
+                        <span className="setting-description">Get notified about revenue milestones</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.notifications.revenueAlerts}
+                          onChange={(e) => handleSettingsChange('notifications', 'revenueAlerts', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Appearance */}
+                <div className="settings-card">
+                  <div className="card-header">
+                    <h3>
+                      <i className="fas fa-palette"></i>
+                      Appearance
+                    </h3>
+                    <span className="card-subtitle">Customize the look and feel</span>
+                  </div>
+                  <div className="settings-group">
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Theme</label>
+                        <span className="setting-description">Choose your preferred color scheme</span>
+                      </div>
+                      <select
+                        className="setting-select"
+                        value={settings.appearance.theme}
+                        onChange={(e) => handleSettingsChange('appearance', 'theme', e.target.value)}
+                      >
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="auto">Auto (System)</option>
+                      </select>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Font Size</label>
+                        <span className="setting-description">Adjust text size for better readability</span>
+                      </div>
+                      <select
+                        className="setting-select"
+                        value={settings.appearance.fontSize}
+                        onChange={(e) => handleSettingsChange('appearance', 'fontSize', e.target.value)}
+                      >
+                        <option value="small">Small</option>
+                        <option value="medium">Medium</option>
+                        <option value="large">Large</option>
+                      </select>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Show Animations</label>
+                        <span className="setting-description">Enable smooth transitions and animations</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.appearance.showAnimations}
+                          onChange={(e) => handleSettingsChange('appearance', 'showAnimations', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shop Management */}
+                <div className="settings-card">
+                  <div className="card-header">
+                    <h3>
+                      <i className="fas fa-store-alt"></i>
+                      Shop Management
+                    </h3>
+                    <span className="card-subtitle">Configure shop-related settings</span>
+                  </div>
+                  <div className="settings-group">
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Auto Backup</label>
+                        <span className="setting-description">Automatically backup shop data</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.shopManagement.autoBackup}
+                          onChange={(e) => handleSettingsChange('shopManagement', 'autoBackup', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Export Format</label>
+                        <span className="setting-description">Default format for data exports</span>
+                      </div>
+                      <select
+                        className="setting-select"
+                        value={settings.shopManagement.exportFormat}
+                        onChange={(e) => handleSettingsChange('shopManagement', 'exportFormat', e.target.value)}
+                      >
+                        <option value="excel">Excel</option>
+                        <option value="csv">CSV</option>
+                        <option value="pdf">PDF</option>
+                      </select>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Data Retention</label>
+                        <span className="setting-description">How long to keep historical data (days)</span>
+                      </div>
+                      <select
+                        className="setting-select"
+                        value={settings.shopManagement.dataRetention}
+                        onChange={(e) => handleSettingsChange('shopManagement', 'dataRetention', parseInt(e.target.value))}
+                      >
+                        <option value={90}>90 days</option>
+                        <option value={180}>180 days</option>
+                        <option value={365}>1 year</option>
+                        <option value={730}>2 years</option>
+                      </select>
+                    </div>
+
+                    <div className="setting-item">
+                      <div className="setting-info">
+                        <label className="setting-label">Multi-Shop View</label>
+                        <span className="setting-description">Enable advanced multi-shop management features</span>
+                      </div>
+                      <label className="setting-toggle">
+                        <input
+                          type="checkbox"
+                          checked={settings.shopManagement.multiShopView}
+                          onChange={(e) => handleSettingsChange('shopManagement', 'multiShopView', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Settings Actions */}
+              <div className="settings-actions">
+                <button className="settings-btn primary" onClick={handleSaveSettings}>
+                  <i className="fas fa-save"></i>
+                  Save All Settings
+                </button>
+                <button className="settings-btn secondary" onClick={handleResetSettings}>
+                  <i className="fas fa-undo"></i>
+                  Reset to Defaults
+                </button>
+              </div>
+            </section>
+          )}
+
         </main>
       </div>
 
       {isMobile && isSidebarOpen && (
-        <div 
-          className="overlay" 
+        <div
+          className="overlay"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Modern Storeman Login Form - Clean & Elegant */}
-      {otpModal.isOpen && (
-        <div className="storeman-modal-overlay" onClick={closeOtpModal}>
-          <div className="storeman-modal" onClick={(e) => e.stopPropagation()}>
-            {/* Clean Header */}
-            <div className="modal-header">
-              <div className="header-content">
-                <div className="header-icon">
-                  <i className="fas fa-user-shield"></i>
-                </div>
-                <div className="header-text">
-                  <h3>Store Access</h3>
-                  <p>Login to {otpModal.shop?.name}</p>
-                </div>
-              </div>
-              <button className="modal-close" onClick={closeOtpModal}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            {/* Store Info Card */}
-            <div className="store-info">
-              <div className="store-icon">
-                <i className="fas fa-store"></i>
-              </div>
-              <div className="store-details">
-                <h4>{otpModal.shop?.name}</h4>
-                <p>{otpModal.shop?.location}</p>
-                {otpModal.shop?.storeman && (
-                  <div className="storeman-info">
-                    <i className="fas fa-user-tie"></i>
-                    <span>{otpModal.shop.storeman.name}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Clean Content Area */}
-            <div className="modal-content">
-              {otpModal.step === 'mobile' ? (
-                <div className="auth-step">
-                  <div className="step-header">
-                    <div className="step-number">1</div>
-                    <div className="step-content">
-                      <h4>Enter Mobile Number</h4>
-                      <p>We'll send you a verification code</p>
-                    </div>
-                  </div>
-
-                  <div className="input-group">
-                    <label>Mobile Number</label>
-                    <div className="input-wrapper">
-                      <span className="country-code">+91</span>
-                      <input
-                        type="tel"
-                        value={otpModal.mobile}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9]/g, '');
-                          if (value.length <= 10) {
-                            setOtpModal(prev => ({ ...prev, mobile: value }));
-                          }
-                        }}
-                        placeholder="Enter mobile number"
-                        className="mobile-input"
-                        maxLength={10}
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  <div className="button-group">
-                    <button className="btn-secondary" onClick={closeOtpModal}>
-                      Cancel
-                    </button>
-                    <button
-                      className="btn-primary"
-                      onClick={handleOtpRequest}
-                      disabled={isOtpLoading || !otpModal.mobile || otpModal.mobile.length !== 10}
-                    >
-                      {isOtpLoading ? 'Sending...' : 'Send Code'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="auth-step">
-                  <div className="step-header">
-                    <div className="step-number">2</div>
-                    <div className="step-content">
-                      <h4>Enter Verification Code</h4>
-                      <p>Sent to +91 {otpModal.mobile}</p>
-                    </div>
-                  </div>
-
-                  <div className="otp-section">
-                    <div className="otp-input-wrapper">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={otpModal.otp}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9]/g, '');
-                          if (value.length <= 6) {
-                            setOtpModal(prev => ({ ...prev, otp: value }));
-                          }
-                        }}
-                        placeholder="Enter 6-digit code"
-                        maxLength={6}
-                        disabled={isOtpLoading}
-                        className="otp-input"
-                        autoFocus
-                      />
-                    </div>
-
-                    <div className="otp-display">
-                      {[...Array(6)].map((_, index) => (
-                        <div
-                          key={index}
-                          className={`otp-digit ${index < otpModal.otp.length ? 'filled' : ''}`}
-                        >
-                          {otpModal.otp[index] || ''}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="resend-section">
-                    {resendCooldown > 0 ? (
-                      <div className="cooldown">Resend in {resendCooldown}s</div>
-                    ) : (
-                      <button className="resend-btn" onClick={handleResendOtp}>
-                        Resend Code
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="button-group">
-                    <button className="btn-secondary" onClick={goBackToMobileStep}>
-                      Back
-                    </button>
-                    <button
-                      className="btn-primary"
-                      onClick={handleOtpVerify}
-                      disabled={!otpModal.otp || otpModal.otp.length !== 6 || isOtpLoading}
-                    >
-                      {isOtpLoading ? 'Verifying...' : 'Login'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
