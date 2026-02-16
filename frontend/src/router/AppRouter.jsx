@@ -5,13 +5,6 @@ import {
   useLocation,
 } from "react-router-dom";
 
-// Customer Pages
-import HomePage from "@features/customer/pages/HomePage";
-import About from "@features/customer/pages/AboutPage";
-import Product from "@features/customer/pages/ProductPage";
-import Offers from "@features/customer/pages/OffersPage";
-import Contact from "@features/customer/pages/ContactPage";
-
 // Shop Owner Pages
 import ShopOwnerLoginPage from "@features/shop-owner/pages/ShopOwnerLoginPage";
 import ShopSelectorPage from "@features/shop-owner/pages/ShopSelectorPage";
@@ -23,27 +16,13 @@ import CompanyAdminLoginPage from "@features/company-admin/pages/CompanyAdminLog
 
 // Shared Components
 import { ProtectedRoute } from "@shared/components/ProtectedRoute";
-import Header from "@shared/components/Header";
-import Footer from "@shared/components/Footer";
 import ScrollToTop from "@shared/components/ScrollToTop";
 
 // ==================== Layout Wrapper ====================
 function Layout({ children }) {
-  const location = useLocation();
-
-  // hide Header/Footer on dashboard and login/admin routes
-  const hideHeaderFooter =
-    location.pathname.startsWith("/dashboard") ||
-    location.pathname.startsWith("/shop-selector") ||
-    location.pathname.startsWith("/company-admin") ||
-    location.pathname.startsWith("/admin-login") ||
-    location.pathname.startsWith("/owner-login"); // ✅ hide Shop Owner pages
-
   return (
     <>
-      {!hideHeaderFooter && <Header />}
       {children}
-      {!hideHeaderFooter && <Footer />}
     </>
   );
 }
@@ -57,12 +36,8 @@ export default function AppRouter() {
       <ScrollToTop />
       <Layout>
         <Routes>
-          {/* Public Routes (Customer) */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/product" element={<Product />} />
-          <Route path="/offers" element={<Offers />} />
-          <Route path="/contact" element={<Contact />} />
+          {/* Default Route - Admin Login */}
+          <Route path="/" element={<CompanyAdminLoginPage />} />
 
           {/* Shop Owner Routes */}
           <Route path="/owner-login" element={<ShopOwnerLoginPage />} />

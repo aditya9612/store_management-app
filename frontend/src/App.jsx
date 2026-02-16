@@ -5,7 +5,6 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // ✅ Global CSS Imports
 import "@shared/styles/vendor.css";
-import "@features/customer/styles/customer-main.css";
 
 export default function App() {
   return (
